@@ -4,6 +4,7 @@ import { ACCENT } from "@/lib/design";
 import { CstTable } from "@/components/app/CstTable";
 import { CclassTable } from "@/components/app/CclassTable";
 import { ProdutoTable, type ProdRow } from "@/components/app/ProdutoTable";
+import { NcmExplorer } from "@/components/app/NcmExplorer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ const PAGE_SIZE = 100;
 
 export default async function IbsPage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; page?: string }> }) {
   const sp = await searchParams;
-  const tab = sp.tab === "produtos" ? "produtos" : "dados";
+  const tab = sp.tab === "produtos" ? "produtos" : sp.tab === "arvore-ncm" ? "arvore-ncm" : "dados";
   const q = (sp.q ?? "").trim();
   const page = Math.max(1, Number(sp.page) || 1);
   const supabase = await createClient();
@@ -59,7 +60,12 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Link href="/ibs?tab=dados" style={tabStyle(tab === "dados")}>Dados do IBS e CBS</Link>
         <Link href="/ibs?tab=produtos" style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
-        <Link href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : "cst"}`} className="hv-btn" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px" }}>
+        <Link href="/ibs?tab=arvore-ncm" style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
+        <Link
+          href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
+          className="hv-btn"
+          style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px" }}
+        >
           + Adicionar dado
         </Link>
       </div>
@@ -77,11 +83,17 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
             <CclassTable rows={cclass ?? []} />
           </section>
         </div>
-      ) : (
+      ) : tab === "produtos" ? (
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos produtos</div>
-          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Alíquotas de referência do período de transição</div>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Alíquotas de referência do período de transição — clique no NCM para ver a árvore de classificação</div>
           <ProdutoTable rows={prod} cclassDescr={cclassDescr} total={prodTotal} page={page} pageSize={PAGE_SIZE} q={q} />
+        </section>
+      ) : (
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Árvore de NCM</div>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Pesquise um código ou descrição para ver a hierarquia completa (capítulo → posição → subposição → item)</div>
+          <NcmExplorer />
         </section>
       )}
     </div>

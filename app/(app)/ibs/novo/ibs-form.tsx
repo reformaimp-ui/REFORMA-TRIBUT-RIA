@@ -59,6 +59,21 @@ const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
       ["011", "011004"],
     ],
   },
+  ncm: {
+    filename: "modelo-arvore-ncm.xlsx",
+    rows: [
+      ["Código", "Descrição"],
+      ["01", "Animais vivos."],
+      ["01.01", "Cavalos, asininos e muares, vivos."],
+      ["0101.2", "- Cavalos:"],
+      ["0101.21.00", "Reprodutores de raça pura"],
+      ["0101.30.00", "Asininos"],
+      ["01.02", "Animais vivos da espécie bovina."],
+      ["0102.2", "- Bovinos domésticos:"],
+      ["0102.21", "-- Reprodutores de raça pura"],
+      ["0102.21.10", "Prenhes ou com cria ao pé"],
+    ],
+  },
 };
 
 function Batch({
@@ -96,7 +111,7 @@ function Batch({
     }
     return { valid, rejected };
   };
-  const tab = type === "produto" ? "produtos" : "dados";
+  const tab = type === "produto" ? "produtos" : type === "ncm" ? "arvore-ncm" : "dados";
   return (
     <ImportPanel
       action={() => {}}
@@ -118,7 +133,7 @@ function Batch({
 
 export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cstRows: Code[]; cclassRows: Code[] }) {
   const [type, setType] = useState(
-    initial === "produto" ? "produto" : initial === "cclass" ? "cclass" : initial === "vinculo" ? "vinculo" : "cst",
+    initial === "produto" ? "produto" : initial === "cclass" ? "cclass" : initial === "vinculo" ? "vinculo" : initial === "ncm" ? "ncm" : "cst",
   );
   const [cstState, cstAction, cstPending] = useActionState<IbsState, FormData>(addCst, {});
   const [ccState, ccAction, ccPending] = useActionState<IbsState, FormData>(addCclass, {});
@@ -134,6 +149,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
         <div onClick={() => setType("cclass")} style={pill(type === "cclass")}>cClassTrib</div>
         <div onClick={() => setType("produto")} style={pill(type === "produto")}>Tributação de produto</div>
         <div onClick={() => setType("vinculo")} style={pill(type === "vinculo")}>Vínculo CST × cClassTrib</div>
+        <div onClick={() => setType("ncm")} style={pill(type === "ncm")}>Árvore de NCM</div>
       </div>
 
       {type === "cst" ? (
@@ -227,6 +243,21 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             <button type="submit" disabled={lkPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: lkPending ? 0.7 : 1 }}>Vincular</button>
           </form>
           <Batch type="vinculo" placeholder={"000\t000001\n000\t000002\n010\t010001"} desc={<span>Uma linha por vínculo — colunas <b>CST, cClassTrib</b> — ou importe um .xlsx.</span>} cstSet={cstSet} cclassSet={cclassSet} />
+        </div>
+      ) : null}
+
+      {type === "ncm" ? (
+        <div style={{ maxWidth: 640 }}>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 14 }}>
+            Importe a tabela oficial de NCM (capítulos, posições, subposições e itens) para habilitar a árvore de classificação na aba Tributação dos produtos.
+          </div>
+          <Batch
+            type="ncm"
+            placeholder={"01\tAnimais vivos.\n01.01\tCavalos, asininos e muares, vivos.\n0102.21.10\tPrenhes ou com cria ao pé"}
+            desc={<span>Uma linha por código — colunas <b>Código, Descrição</b> — cole a tabela oficial completa (capítulos → posições → subposições → itens) ou importe um .xlsx.</span>}
+            cstSet={cstSet}
+            cclassSet={cclassSet}
+          />
         </div>
       ) : null}
     </div>
