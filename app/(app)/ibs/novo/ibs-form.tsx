@@ -78,11 +78,13 @@ function Batch({
       const cst = String(c[type === "vinculo" ? 0 : 2] ?? "").trim();
       const cclass = String(c[type === "vinculo" ? 1 : 3] ?? "").trim();
       if (type === "produto") {
+        // Chave real: NCM + CST + cClassTrib — um NCM pode ter várias tributações.
         const ncm = String(c[0] ?? "").trim();
-        if (seen.has(ncm)) { rejected.push({ row: c, reason: `NCM ${ncm} duplicado no arquivo` }); continue; }
+        const key = `${ncm}|${cst}|${cclass}`;
+        if (seen.has(key)) { rejected.push({ row: c, reason: `NCM ${ncm} com a mesma tributação (CST ${cst} / cClassTrib ${cclass}) duplicado no arquivo` }); continue; }
         if (cstSet.size && cst && !cstSet.has(cst)) { rejected.push({ row: c, reason: `CST ${cst} inexistente` }); continue; }
         if (cclassSet.size && cclass && !cclassSet.has(cclass)) { rejected.push({ row: c, reason: `cClassTrib ${cclass} inexistente` }); continue; }
-        seen.add(ncm);
+        seen.add(key);
       } else if (type === "vinculo") {
         const key = `${cst}|${cclass}`;
         if (seen.has(key)) { rejected.push({ row: c, reason: `Vínculo ${cst} × ${cclass} duplicado no arquivo` }); continue; }

@@ -39,13 +39,17 @@ export async function addProduto(_p: IbsState, fd: FormData): Promise<IbsState> 
   if (!ncm) return { error: "Informe o NCM." };
   const { office } = await getContext();
   const supabase = await createClient();
-  await supabase.from("produto_rows").insert({
-    office_id: office.id, ncm, descr: String(fd.get("descr") || "").trim(),
-    cst: String(fd.get("cst") || ""), cclass: String(fd.get("cclass") || ""),
-    aliq_ibs: String(fd.get("aliq_ibs") || ""), aliq_cbs: String(fd.get("aliq_cbs") || ""),
-    red_ibs: String(fd.get("red_ibs") || ""), red_cbs: String(fd.get("red_cbs") || ""),
-    position: await nextPos("produto_rows", office.id),
-  });
+  const { error } = await supabase.from("produto_rows").upsert(
+    {
+      office_id: office.id, ncm, descr: String(fd.get("descr") || "").trim(),
+      cst: String(fd.get("cst") || ""), cclass: String(fd.get("cclass") || ""),
+      aliq_ibs: String(fd.get("aliq_ibs") || ""), aliq_cbs: String(fd.get("aliq_cbs") || ""),
+      red_ibs: String(fd.get("red_ibs") || ""), red_cbs: String(fd.get("red_cbs") || ""),
+      position: await nextPos("produto_rows", office.id),
+    },
+    { onConflict: "office_id,ncm,cst,cclass" },
+  );
+  if (error) return { error: error.message };
   revalidatePath("/ibs");
   redirect("/ibs?tab=produtos");
 }
@@ -90,6 +94,7 @@ export async function importChunk(type: string, cells: string[][], startPos: num
   const oid = office.id;
 
   if (type === "produto") {
+    // Chave real: um NCM pode ter várias tributações (CST/cClassTrib diferentes).
     const rows = dedupeBy(
       cells
         .map((c, i) => ({
@@ -100,10 +105,10 @@ export async function importChunk(type: string, cells: string[][], startPos: num
           position: startPos + i,
         }))
         .filter((r) => r.ncm),
-      (r) => r.ncm,
+      (r) => `${r.ncm}|${r.cst}|${r.cclass}`,
     );
     if (!rows.length) return { inserted: 0 };
-    const { error } = await supabase.from("produto_rows").upsert(rows, { onConflict: "office_id,ncm" });
+    const { error } = await supabase.from("produto_rows").upsert(rows, { onConflict: "office_id,ncm,cst,cclass" });
     return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
   }
 
