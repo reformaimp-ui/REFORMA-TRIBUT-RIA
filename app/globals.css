@@ -1,0 +1,190 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #4653d6;
+  --color-accent-hover: #333fb0;
+  --color-paper: #f4f4f2;
+  --color-ink: #1c1e26;
+  --color-line: #e7e7e3;
+  --color-muted: #8a8d98;
+  --font-sans: var(--font-instrument), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f4f4f2;
+  color: #1c1e26;
+  font-family: var(--font-instrument), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: #4653d6;
+  text-decoration: none;
+}
+a:hover {
+  color: #333fb0;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d8d4;
+  border-radius: 6px;
+  border: 2px solid #f4f4f2;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fadeup {
+  animation: fadeUp 0.3s ease;
+}
+
+/* ───────────── motion system ───────────── */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(120px) } to { opacity: 1; transform: none } }
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.94) }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1) }
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+
+/* transição de página ao trocar de aba */
+.page-enter { animation: pageIn 0.28s ease both; height: 100%; }
+
+/* overlays, drawer lateral e modais */
+.overlay-in { animation: fadeIn 0.2s ease both; }
+.drawer-in { animation: slideInRight 0.38s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+.modal-in { animation: popIn 0.22s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+
+/* entrada escalonada de listas/grades */
+.stagger > * { animation: fadeUp 0.32s ease both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s }
+.stagger > *:nth-child(2) { animation-delay: 0.06s }
+.stagger > *:nth-child(3) { animation-delay: 0.1s }
+.stagger > *:nth-child(4) { animation-delay: 0.14s }
+.stagger > *:nth-child(5) { animation-delay: 0.18s }
+.stagger > *:nth-child(6) { animation-delay: 0.22s }
+.stagger > *:nth-child(7) { animation-delay: 0.26s }
+.stagger > *:nth-child(8) { animation-delay: 0.3s }
+.stagger > *:nth-child(9) { animation-delay: 0.34s }
+.stagger > *:nth-child(10) { animation-delay: 0.38s }
+.stagger > *:nth-child(n + 11) { animation-delay: 0.42s }
+
+/* micro-transições em elementos interativos */
+a, button,
+.hv-nav, .hv-card, .hv-btn, .hv-dim, .hv-danger, .hv-soft, .hv-light,
+.hv-row, .hv-gray, .hv-redbg, .hv-inbdr {
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    filter 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.hv-card:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20, 20, 30, 0.07); }
+.hv-btn:active, .hv-dim:active { transform: scale(0.97); }
+.hv-port { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+
+/* inputs com foco suave */
+input, textarea, select { transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease; }
+input.fc:focus, textarea.fc:focus, select.fc:focus { box-shadow: 0 0 0 3px rgba(70, 83, 214, 0.12); }
+
+/* acessibilidade: respeita preferência por menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* hover helpers ported from the prototype's design language */
+.hv-nav:hover {
+  background: #f2f2ef;
+}
+.hv-card:hover {
+  border-color: #c9c9c4 !important;
+}
+.hv-btn:hover {
+  filter: brightness(1.08);
+}
+.hv-dim:hover {
+  filter: brightness(0.97);
+}
+.hv-danger:hover {
+  color: #b3402e !important;
+}
+.hv-soft:hover {
+  background: #f7f7f4;
+}
+.hv-light:hover {
+  background: #f4f4f2;
+}
+.hv-row:hover {
+  background: #fafaf8;
+}
+.hv-gray:hover {
+  color: #8a8d98 !important;
+}
+.hv-redbg:hover {
+  background: #fdf2f0;
+}
+.hv-inbdr:hover {
+  border-color: #e2e2de !important;
+}
+.hv-port:hover {
+  transform: translateY(-50%) scale(1.35) !important;
+}
+.edge {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.edge:hover {
+  stroke: #d9534f;
+}
+input.fc:focus,
+textarea.fc:focus,
+select.fc:focus {
+  border-color: #4653d6 !important;
+}
+
+/* markdown live preview (aba Prazos) */
+.md-preview { font-size: 13px; line-height: 1.65; color: #33363f; }
+.md-preview h1 { font-size: 18px; font-weight: 700; margin: 14px 0 6px; letter-spacing: -0.01em; }
+.md-preview h2 { font-size: 15.5px; font-weight: 700; margin: 12px 0 5px; }
+.md-preview h3 { font-size: 13.5px; font-weight: 700; margin: 10px 0 4px; }
+.md-preview p { margin: 0 0 8px; }
+.md-preview ul, .md-preview ol { margin: 0 0 8px; padding-left: 20px; }
+.md-preview li { margin: 2px 0; }
+.md-preview code { font-family: var(--font-jetbrains), monospace; font-size: 11.5px; background: #f2f2ef; border: 1px solid #e7e7e3; border-radius: 4px; padding: 1px 5px; }
+.md-preview blockquote { margin: 0 0 8px; padding: 6px 12px; border-left: 3px solid #d9deff; background: #f7f8ff; border-radius: 0 8px 8px 0; color: #4b4e58; }
+.md-preview hr { border: none; border-top: 1px solid #e7e7e3; margin: 12px 0; }
+.md-preview a { color: #4653d6; font-weight: 600; }
