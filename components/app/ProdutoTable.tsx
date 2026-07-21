@@ -36,11 +36,11 @@ export function ProdutoTable({ rows, cclassDescr }: { rows: ProdRow[]; cclassDes
           <div>NCM</div><div>Descrição</div><div>CST</div><div>cClassTrib</div><div>Alíq. IBS</div><div>Alíq. CBS</div><div>Red. IBS</div><div>Red. CBS</div>
         </div>
         {filtered.map((r, i) => (
-          <div key={i} className="hv-row" style={{ display: "grid", gridTemplateColumns: "110px 1.6fr 70px 90px 90px 90px 100px 100px", gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}>
+          <div key={`${r.ncm}-${i}`} className="hv-row" style={{ display: "grid", gridTemplateColumns: "110px 1.6fr 70px 90px 90px 90px 100px 100px", gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}>
             <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: "#4b4e58" }}>{r.ncm}</div>
             <div style={{ fontSize: 12.5, fontWeight: 500 }}>{r.descr}</div>
             <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: ACCENT }}>{r.cst}</div>
-            <CclassInfo code={r.cclass} descr={cclassDescr[r.cclass] || ""}>
+            <CclassInfo key={`${r.cclass}-${i}`} code={r.cclass} descr={cclassDescr[r.cclass] || ""}>
               <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: "#7c3aed", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.cclass}</div>
             </CclassInfo>
             <div style={{ fontSize: 12, color: "#33363f" }}>{r.aliq_ibs}</div>

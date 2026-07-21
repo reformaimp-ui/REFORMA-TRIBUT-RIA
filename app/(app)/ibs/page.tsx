@@ -19,12 +19,17 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   const sp = await searchParams;
   const tab = sp.tab === "produtos" ? "produtos" : "dados";
   const supabase = await createClient();
-  const [{ data: cst }, { data: cclass }, { data: prod }] = await Promise.all([
+  const [{ data: cst }, { data: cclass }, { data: prod }, { data: links }] = await Promise.all([
     supabase.from("cst_rows").select("code,descr").order("position"),
     supabase.from("cclass_rows").select("code,descr").order("position"),
     supabase.from("produto_rows").select("ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs").order("position"),
+    supabase.from("cst_cclass_links").select("cst,cclass").order("position"),
   ]);
   const cclassDescr = Object.fromEntries((cclass ?? []).map((r: { code: string; descr: string }) => [r.code, r.descr]));
+  const linksByCst: Record<string, { code: string; descr: string }[]> = {};
+  for (const l of (links ?? []) as { cst: string; cclass: string }[]) {
+    (linksByCst[l.cst] ??= []).push({ code: l.cclass, descr: cclassDescr[l.cclass] || "" });
+  }
 
   return (
     <div className="stagger" style={{ padding: "20px 22px", height: "100%", overflow: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -41,7 +46,7 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
           <section>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>CSTs do IBS e CBS</div>
             <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Código de Situação Tributária — Informe Técnico 2025.002 (RFB)</div>
-            <CstTable rows={cst ?? []} />
+            <CstTable rows={cst ?? []} linksByCst={linksByCst} />
           </section>
           <section>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>cClassTrib do IBS e CBS</div>
