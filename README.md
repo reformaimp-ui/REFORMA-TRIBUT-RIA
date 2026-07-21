@@ -85,4 +85,41 @@ supabase/migrations/            schema + RLS + funções + seed
 - [x] **Fase 2** — Núcleo: Clientes, Equipe e Tarefas (progresso de subtarefas por cliente)
 - [x] **Fase 3** — Dashboard, Prazos, Fluxos (canvas persistido), IBS/CBS e Base de conhecimento
 - [x] **Limpeza** — banco zerado, sem dados de teste; seed contém só referência regulatória
-- [ ] **Fase 4** — Deploy (Vercel + Supabase prod)
+- [x] **Fase 4** — Preparado para deploy (Vercel + Supabase prod)
+
+## Deploy na Vercel
+
+O Supabase já está em produção (as migrations foram aplicadas no projeto cloud). Só falta subir o app:
+
+### 1. Importar o repositório
+- Em [vercel.com/new](https://vercel.com/new), importe `reformaimp-ui/REFORMA-TRIBUT-RIA`.
+- Framework **Next.js** é detectado automaticamente.
+
+### 2. Variáveis de ambiente (Settings → Environment Variables)
+```
+NEXT_PUBLIC_SUPABASE_URL=https://bkxvpxjsoikcjeexybpo.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...   (a publishable key do projeto)
+```
+São públicas (prefixo `NEXT_PUBLIC_`). Marque para Production, Preview e Development.
+
+### 3. Configurar o Supabase Auth para o domínio de produção
+Supabase → **Authentication → URL Configuration**:
+- **Site URL:** `https://<seu-app>.vercel.app`
+- **Redirect URLs:** adicione `https://<seu-app>.vercel.app/**`
+
+> Sem isso, o link de confirmação de e-mail aponta para localhost e quebra o primeiro login.
+
+### 4. Deploy
+Clique em **Deploy**. A cada `git push` na branch `main`, a Vercel refaz o build.
+
+### 5. Latência (importante)
+Alinhe a **região** da Vercel à do Supabase para minimizar latência por query:
+- Descubra a região do projeto em Supabase → Settings → General → Region.
+- Na Vercel (Settings → Functions), selecione a mesma região (ex.: `gru1` São Paulo se o Supabase for `sa-east-1`).
+
+### CLI (alternativa)
+```bash
+npm i -g vercel
+vercel login
+vercel --prod       # segue o assistente; adicione as env vars quando solicitado
+```
