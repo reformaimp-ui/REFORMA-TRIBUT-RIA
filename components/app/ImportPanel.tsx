@@ -3,9 +3,14 @@
 import { useRef, useState } from "react";
 import { ACCENT } from "@/lib/design";
 
+type CsvTemplate = { filename: string; content: string };
+type XlsxTemplate = { filename: string; rows: string[][] };
+
+const HEADER_WORDS = /^(nome|cst|cclasstrib|ncm|c[oó]digo|code|descri[cç][aã]o)$/i;
+
 /**
- * Painel de importação em lote: dropzone estilizada (.csv), botão de template,
- * textarea com contagem ao vivo e submit. Usado em Clientes e IBS/CBS.
+ * Painel de importação em lote: dropzone estilizada, botão de template,
+ * textarea com contagem ao vivo e submit. Usado em Clientes (.csv) e IBS/CBS (.xlsx).
  */
 export function ImportPanel({
   action,
@@ -17,6 +22,7 @@ export function ImportPanel({
   noun,
   confirmLabel,
   template,
+  format = "csv",
 }: {
   action: (fd: FormData) => void;
   pending: boolean;
@@ -26,36 +32,82 @@ export function ImportPanel({
   placeholder: string;
   noun: string;
   confirmLabel: (n: number) => string;
-  template: { filename: string; content: string };
+  template: CsvTemplate | XlsxTemplate;
+  format?: "csv" | "xlsx";
 }) {
   const [text, setText] = useState("");
+  const [rows, setRows] = useState<string[][]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const n = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .filter((l) => l.split(",")[0].trim() && !/^nome$/i.test(l.split(",")[0].trim())).length;
+  const csvRows = (t: string) =>
+    t
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.split(",").map((c) => c.trim()))
+      .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
+
+  const tabRows = (t: string) =>
+    t
+      .split("\n")
+      .map((l) => l.replace(/\r$/, ""))
+      .filter((l) => l.trim())
+      .map((l) => l.split("\t").map((c) => c.trim()))
+      .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
+
+  const n = format === "xlsx" ? rows.length : csvRows(text).length;
 
   const readFile = (f: File) => {
-    const r = new FileReader();
-    r.onload = () => {
-      setText(String(r.result || ""));
-      setFileName(f.name);
-    };
-    r.readAsText(f);
+    setFileName(f.name);
+    if (format === "xlsx") {
+      const r = new FileReader();
+      r.onload = async () => {
+        const buf = r.result as ArrayBuffer;
+        const XLSX = await import("xlsx");
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false });
+        const parsed = aoa
+          .map((r) => (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim()))
+          .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
+        setRows(parsed);
+        setText(parsed.map((c) => c.join("\t")).join("\n"));
+      };
+      r.readAsArrayBuffer(f);
+    } else {
+      const r = new FileReader();
+      r.onload = () => setText(String(r.result || ""));
+      r.readAsText(f);
+    }
   };
 
-  const downloadTemplate = () => {
-    const blob = new Blob(["﻿" + template.content], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = template.filename;
-    a.click();
-    URL.revokeObjectURL(url);
+  const downloadTemplate = async () => {
+    if (format === "xlsx" && "rows" in template) {
+      const XLSX = await import("xlsx");
+      const sheet = XLSX.utils.aoa_to_sheet(template.rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheet, "Modelo");
+      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = template.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if ("content" in template) {
+      const blob = new Blob(["﻿" + template.content], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = template.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -74,6 +126,11 @@ export function ImportPanel({
       {Object.entries(hidden ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
+      {format === "xlsx" ? (
+        <input type="hidden" name="rowsJson" value={JSON.stringify(rows.length ? rows : tabRows(text))} />
+      ) : (
+        <input type="hidden" name="batchText" value={text} />
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div
@@ -153,7 +210,7 @@ export function ImportPanel({
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,text/csv"
+          accept={format === "xlsx" ? ".xlsx" : ".csv,text/csv"}
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) readFile(f);
@@ -175,7 +232,7 @@ export function ImportPanel({
               <path d="M9.5 1.5V5H13" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
             </svg>
             <span style={{ fontSize: 12.5, color: "#4b4e58" }}>
-              <b style={{ color: ACCENT }}>Escolher arquivo .csv</b> ou arraste aqui
+              <b style={{ color: ACCENT }}>Escolher arquivo {format === "xlsx" ? ".xlsx" : ".csv"}</b> ou arraste aqui
             </span>
           </>
         )}
@@ -183,13 +240,13 @@ export function ImportPanel({
 
       <div>
         <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>
-          Ou cole as linhas
+          {format === "xlsx" ? "Ou cole as linhas (colunas separadas por tabulação, como ao colar do Excel)" : "Ou cole as linhas"}
         </div>
         <textarea
-          name="batchText"
           value={text}
           onChange={(e) => {
             setText(e.target.value);
+            setRows([]);
             setFileName(null);
           }}
           rows={6}
