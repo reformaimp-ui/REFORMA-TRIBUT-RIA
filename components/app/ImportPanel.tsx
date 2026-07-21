@@ -6,7 +6,12 @@ import { ACCENT } from "@/lib/design";
 type CsvTemplate = { filename: string; content: string };
 type XlsxTemplate = { filename: string; rows: string[][] };
 
+export type ChunkResult = { inserted: number; error?: string };
+export type Rejected = { row: string[]; reason: string };
+export type Validation = { valid: string[][]; rejected: Rejected[] };
+
 const HEADER_WORDS = /^(nome|cst|cclasstrib|ncm|c[oó]digo|code|descri[cç][aã]o)$/i;
+const CHUNK_SIZE = 500;
 
 /**
  * Painel de importação em lote: dropzone estilizada, botão de template,
@@ -23,6 +28,9 @@ export function ImportPanel({
   confirmLabel,
   template,
   format = "csv",
+  chunkImport,
+  validate,
+  onFinish,
 }: {
   action: (fd: FormData) => void;
   pending: boolean;
@@ -34,12 +42,21 @@ export function ImportPanel({
   confirmLabel: (n: number) => string;
   template: CsvTemplate | XlsxTemplate;
   format?: "csv" | "xlsx";
+  // Modo lote: quando fornecido, o envio é feito em chunks com progresso e relatório.
+  chunkImport?: (cells: string[][], startPos: number) => Promise<ChunkResult>;
+  validate?: (cells: string[][]) => Validation;
+  onFinish?: () => Promise<void> | void;
 }) {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<string[][]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Estado do import em lote.
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0); // 0..1
+  const [report, setReport] = useState<{ inserted: number; rejected: Rejected[]; error?: string } | null>(null);
 
   const csvRows = (t: string) =>
     t
@@ -58,6 +75,35 @@ export function ImportPanel({
       .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
 
   const n = format === "xlsx" ? rows.length : csvRows(text).length;
+
+  const runChunkImport = async () => {
+    if (!chunkImport) return;
+    const all = format === "xlsx" ? (rows.length ? rows : tabRows(text)) : csvRows(text);
+    const { valid, rejected } = validate ? validate(all) : { valid: all, rejected: [] as Rejected[] };
+    setRunning(true);
+    setReport(null);
+    setProgress(0);
+    let inserted = 0;
+    try {
+      for (let i = 0; i < valid.length; i += CHUNK_SIZE) {
+        const chunk = valid.slice(i, i + CHUNK_SIZE);
+        const res = await chunkImport(chunk, i);
+        if (res.error) {
+          setReport({ inserted, rejected, error: `Lote ${i / CHUNK_SIZE + 1}: ${res.error}` });
+          setRunning(false);
+          return;
+        }
+        inserted += res.inserted;
+        setProgress(Math.min(1, (i + chunk.length) / Math.max(1, valid.length)));
+      }
+      setReport({ inserted, rejected });
+      setRunning(false);
+      if (onFinish) await onFinish();
+    } catch (e) {
+      setReport({ inserted, rejected, error: e instanceof Error ? e.message : "Falha na importação." });
+      setRunning(false);
+    }
+  };
 
   const readFile = (f: File) => {
     setFileName(f.name);
@@ -110,9 +156,13 @@ export function ImportPanel({
     }
   };
 
+  const chunkMode = !!chunkImport;
+  const busy = pending || running;
+
   return (
     <form
-      action={action}
+      action={chunkMode ? undefined : action}
+      onSubmit={chunkMode ? (e) => { e.preventDefault(); void runChunkImport(); } : undefined}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -268,6 +318,40 @@ export function ImportPanel({
 
       {error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{error}</div> : null}
 
+      {running ? (
+        <div>
+          <div style={{ height: 6, borderRadius: 99, background: "#eef0f4", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: ACCENT, transition: "width .15s" }} />
+          </div>
+          <div style={{ fontSize: 11, color: "#8a8d98", marginTop: 6 }}>Importando… {Math.round(progress * 100)}%</div>
+        </div>
+      ) : null}
+
+      {report ? (
+        <div style={{ fontSize: 12, borderRadius: 9, padding: "10px 12px", background: report.error ? "#fdf2f0" : "#f2faf7", border: `1px solid ${report.error ? "#f0c8bf" : "#c9ebdf"}` }}>
+          <div style={{ fontWeight: 700, color: report.error ? "#b3402e" : "#0e7a6f" }}>
+            {report.error ? "Importação interrompida" : "Importação concluída"}
+          </div>
+          <div style={{ color: "#4b4e58", marginTop: 3 }}>
+            {report.inserted} {noun} importado(s){report.rejected.length ? ` · ${report.rejected.length} ignorado(s)` : ""}
+          </div>
+          {report.error ? <div style={{ color: "#b3402e", marginTop: 4 }}>{report.error}</div> : null}
+          {report.rejected.length ? (
+            <details style={{ marginTop: 6 }}>
+              <summary style={{ cursor: "pointer", color: "#8a8d98" }}>Ver linhas ignoradas</summary>
+              <div style={{ maxHeight: 160, overflow: "auto", marginTop: 6, fontFamily: "var(--font-jetbrains)", fontSize: 11 }}>
+                {report.rejected.slice(0, 200).map((r, i) => (
+                  <div key={i} style={{ padding: "2px 0", color: "#6b6e78" }}>
+                    <span style={{ color: "#b3402e" }}>{r.reason}</span> — {r.row.slice(0, 4).join(" · ")}
+                  </div>
+                ))}
+                {report.rejected.length > 200 ? <div style={{ color: "#a0a3ad", paddingTop: 4 }}>…e mais {report.rejected.length - 200}</div> : null}
+              </div>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
+
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div
           style={{
@@ -283,7 +367,7 @@ export function ImportPanel({
         </div>
         <button
           type="submit"
-          disabled={pending || n === 0}
+          disabled={busy || n === 0}
           className={n ? "hv-btn" : undefined}
           style={{
             marginLeft: "auto",
@@ -294,11 +378,11 @@ export function ImportPanel({
             padding: "9px 16px",
             borderRadius: 8,
             border: "none",
-            cursor: n && !pending ? "pointer" : "not-allowed",
-            opacity: n && !pending ? 1 : 0.45,
+            cursor: n && !busy ? "pointer" : "not-allowed",
+            opacity: n && !busy ? 1 : 0.45,
           }}
         >
-          {pending ? "Importando…" : confirmLabel(n)}
+          {busy ? "Importando…" : confirmLabel(n)}
         </button>
       </div>
     </form>

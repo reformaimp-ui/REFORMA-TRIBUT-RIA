@@ -15,14 +15,37 @@ function tabStyle(active: boolean): React.CSSProperties {
   };
 }
 
-export default async function IbsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+const PAGE_SIZE = 100;
+
+export default async function IbsPage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; page?: string }> }) {
   const sp = await searchParams;
   const tab = sp.tab === "produtos" ? "produtos" : "dados";
+  const q = (sp.q ?? "").trim();
+  const page = Math.max(1, Number(sp.page) || 1);
   const supabase = await createClient();
-  const [{ data: cst }, { data: cclass }, { data: prod }, { data: links }] = await Promise.all([
+
+  // Produtos: busca + paginação server-side (suporta 10k+ sem estourar o cap de 1000
+  // linhas do PostgREST nem o DOM). Só consulta produtos quando a aba está ativa.
+  let prod: ProdRow[] = [];
+  let prodTotal = 0;
+  if (tab === "produtos") {
+    let query = supabase
+      .from("produto_rows")
+      .select("ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs", { count: "exact" })
+      .order("position")
+      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    if (q) {
+      const like = `%${q}%`;
+      query = query.or(`ncm.ilike.${like},descr.ilike.${like},cst.ilike.${like},cclass.ilike.${like}`);
+    }
+    const { data, count } = await query;
+    prod = (data ?? []) as ProdRow[];
+    prodTotal = count ?? 0;
+  }
+
+  const [{ data: cst }, { data: cclass }, { data: links }] = await Promise.all([
     supabase.from("cst_rows").select("code,descr").order("position"),
     supabase.from("cclass_rows").select("code,descr").order("position"),
-    supabase.from("produto_rows").select("ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs").order("position"),
     supabase.from("cst_cclass_links").select("cst,cclass").order("position"),
   ]);
   const cclassDescr = Object.fromEntries((cclass ?? []).map((r: { code: string; descr: string }) => [r.code, r.descr]));
@@ -58,7 +81,7 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos produtos</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Alíquotas de referência do período de transição</div>
-          <ProdutoTable rows={(prod ?? []) as ProdRow[]} cclassDescr={cclassDescr} />
+          <ProdutoTable rows={prod} cclassDescr={cclassDescr} total={prodTotal} page={page} pageSize={PAGE_SIZE} q={q} />
         </section>
       )}
     </div>

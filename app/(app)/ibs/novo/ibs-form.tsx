@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { ACCENT } from "@/lib/design";
-import { ImportPanel } from "@/components/app/ImportPanel";
-import { addBatch, addCclass, addCst, addCstLink, addProduto, type IbsState } from "../actions";
+import { ImportPanel, type Rejected, type Validation } from "@/components/app/ImportPanel";
+import { addCclass, addCst, addCstLink, addProduto, finishImport, importChunk, type IbsState } from "../actions";
 
 type Code = { code: string; descr: string };
 const INP: React.CSSProperties = { width: "100%", fontSize: 13, padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" };
@@ -61,13 +61,35 @@ const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
   },
 };
 
-function Batch({ type, placeholder, desc }: { type: string; placeholder: string; desc: React.ReactNode }) {
-  const [state, action, pending] = useActionState<IbsState, FormData>(addBatch, {});
+function Batch({
+  type, placeholder, desc, cstSet, cclassSet,
+}: {
+  type: string; placeholder: string; desc: React.ReactNode; cstSet: Set<string>; cclassSet: Set<string>;
+}) {
+  // Valida linhas contra as tabelas de referência antes de enviar (só quando há
+  // códigos cadastrados — caso contrário não bloqueia a primeira carga).
+  const validate = (cells: string[][]): Validation => {
+    const valid: string[][] = [];
+    const rejected: Rejected[] = [];
+    for (const c of cells) {
+      const cst = String(c[type === "vinculo" ? 0 : 2] ?? "").trim();
+      const cclass = String(c[type === "vinculo" ? 1 : 3] ?? "").trim();
+      if (type === "produto") {
+        if (cstSet.size && cst && !cstSet.has(cst)) { rejected.push({ row: c, reason: `CST ${cst} inexistente` }); continue; }
+        if (cclassSet.size && cclass && !cclassSet.has(cclass)) { rejected.push({ row: c, reason: `cClassTrib ${cclass} inexistente` }); continue; }
+      } else if (type === "vinculo") {
+        if (cstSet.size && !cstSet.has(cst)) { rejected.push({ row: c, reason: `CST ${cst} inexistente` }); continue; }
+        if (cclassSet.size && !cclassSet.has(cclass)) { rejected.push({ row: c, reason: `cClassTrib ${cclass} inexistente` }); continue; }
+      }
+      valid.push(c);
+    }
+    return { valid, rejected };
+  };
+  const tab = type === "produto" ? "produtos" : "dados";
   return (
     <ImportPanel
-      action={action}
-      pending={pending}
-      error={state.error}
+      action={() => {}}
+      pending={false}
       hidden={{ type }}
       desc={desc}
       placeholder={placeholder}
@@ -75,6 +97,9 @@ function Batch({ type, placeholder, desc }: { type: string; placeholder: string;
       confirmLabel={(n) => `Importar ${n} registro(s)`}
       template={TEMPLATES[type] ?? TEMPLATES.cst}
       format="xlsx"
+      chunkImport={(cells, startPos) => importChunk(type, cells, startPos)}
+      validate={type === "produto" || type === "vinculo" ? validate : undefined}
+      onFinish={() => finishImport(tab)}
     />
   );
 }
@@ -87,6 +112,8 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
   const [ccState, ccAction, ccPending] = useActionState<IbsState, FormData>(addCclass, {});
   const [pState, pAction, pPending] = useActionState<IbsState, FormData>(addProduto, {});
   const [lkState, lkAction, lkPending] = useActionState<IbsState, FormData>(addCstLink, {});
+  const cstSet = useMemo(() => new Set(cstRows.map((r) => r.code)), [cstRows]);
+  const cclassSet = useMemo(() => new Set(cclassRows.map((r) => r.code)), [cclassRows]);
 
   return (
     <div>
@@ -106,7 +133,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {cstState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{cstState.error}</div> : null}
             <button type="submit" disabled={cstPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: cstPending ? 0.7 : 1 }}>Adicionar CST</button>
           </form>
-          <Batch type="cst" placeholder={"200\tAlíquota zero\n210\tAlíquota reduzida"} desc={<span>Uma linha por código — colunas <b>CST, Descrição</b> — ou importe um .xlsx.</span>} />
+          <Batch type="cst" placeholder={"200\tAlíquota zero\n210\tAlíquota reduzida"} desc={<span>Uma linha por código — colunas <b>CST, Descrição</b> — ou importe um .xlsx.</span>} cstSet={cstSet} cclassSet={cclassSet} />
         </div>
       ) : null}
 
@@ -119,7 +146,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {ccState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{ccState.error}</div> : null}
             <button type="submit" disabled={ccPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: ccPending ? 0.7 : 1 }}>Adicionar cClassTrib</button>
           </form>
-          <Batch type="cclass" placeholder={"200001\tCesta básica nacional\n210001\tMedicamentos — redução 60%"} desc={<span>Uma linha por código — colunas <b>cClassTrib, Descrição</b> — ou importe um .xlsx.</span>} />
+          <Batch type="cclass" placeholder={"200001\tCesta básica nacional\n210001\tMedicamentos — redução 60%"} desc={<span>Uma linha por código — colunas <b>cClassTrib, Descrição</b> — ou importe um .xlsx.</span>} cstSet={cstSet} cclassSet={cclassSet} />
         </div>
       ) : null}
 
@@ -160,7 +187,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {pState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{pState.error}</div> : null}
             <button type="submit" disabled={pPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: pPending ? 0.7 : 1 }}>Adicionar produto</button>
           </form>
-          <Batch type="produto" placeholder={"1006.30.11\tArroz beneficiado\t200\t200001\t17,7%\t8,8%\t100%\t100%"} desc={<span>Uma linha por produto — colunas <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou importe um .xlsx.</span>} />
+          <Batch type="produto" placeholder={"1006.30.11\tArroz beneficiado\t200\t200001\t17,7%\t8,8%\t100%\t100%"} desc={<span>Uma linha por produto — colunas <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou importe um .xlsx.</span>} cstSet={cstSet} cclassSet={cclassSet} />
         </div>
       ) : null}
 
@@ -187,7 +214,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {lkState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{lkState.error}</div> : null}
             <button type="submit" disabled={lkPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: lkPending ? 0.7 : 1 }}>Vincular</button>
           </form>
-          <Batch type="vinculo" placeholder={"000\t000001\n000\t000002\n010\t010001"} desc={<span>Uma linha por vínculo — colunas <b>CST, cClassTrib</b> — ou importe um .xlsx.</span>} />
+          <Batch type="vinculo" placeholder={"000\t000001\n000\t000002\n010\t010001"} desc={<span>Uma linha por vínculo — colunas <b>CST, cClassTrib</b> — ou importe um .xlsx.</span>} cstSet={cstSet} cclassSet={cclassSet} />
         </div>
       ) : null}
     </div>

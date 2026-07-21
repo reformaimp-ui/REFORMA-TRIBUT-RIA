@@ -14,36 +14,6 @@ async function nextPos(table: string, officeId: string) {
   return count ?? 0;
 }
 
-function parseCells(rowsJson: string): string[][] {
-  let cells: unknown;
-  try {
-    cells = JSON.parse(rowsJson);
-  } catch {
-    return [];
-  }
-  if (!Array.isArray(cells)) return [];
-  return cells
-    .map((r) => (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim()))
-    .filter((c) => c[0]);
-}
-
-function codeRows(rowsJson: string) {
-  return parseCells(rowsJson).map((c) => ({ code: c[0], descr: c[1] || "" }));
-}
-
-function prodRows(rowsJson: string) {
-  return parseCells(rowsJson).map((c) => ({
-    ncm: c[0], descr: c[1] || "", cst: c[2] || "", cclass: c[3] || "",
-    aliq_ibs: c[4] || "", aliq_cbs: c[5] || "", red_ibs: c[6] || "", red_cbs: c[7] || "",
-  }));
-}
-
-function linkRows(rowsJson: string) {
-  return parseCells(rowsJson)
-    .filter((c) => c[1])
-    .map((c) => ({ cst: c[0], cclass: c[1] }));
-}
-
 export async function addCst(_p: IbsState, fd: FormData): Promise<IbsState> {
   const code = String(fd.get("code") || "").trim();
   if (!code) return { error: "Informe o código." };
@@ -97,35 +67,74 @@ export async function addCstLink(_p: IbsState, fd: FormData): Promise<IbsState> 
   redirect("/ibs?tab=dados");
 }
 
-export async function addBatch(_p: IbsState, fd: FormData): Promise<IbsState> {
-  const type = String(fd.get("type") || "cst");
-  const rowsJson = String(fd.get("rowsJson") || "");
+export type ImportResult = { inserted: number; error?: string };
+
+// Remove duplicatas dentro do mesmo lote (o upsert não pode afetar a mesma linha 2x),
+// mantendo a última ocorrência da chave.
+function dedupeBy<T>(rows: T[], key: (r: T) => string): T[] {
+  const map = new Map<string, T>();
+  for (const r of rows) map.set(key(r), r);
+  return [...map.values()];
+}
+
+/**
+ * Importa um lote (chunk) de linhas já parseadas no client. Chamada em loop pelo
+ * ImportPanel — cada chamada carrega ~500 linhas, muito abaixo do limite de 1MB do
+ * Server Action. Usa upsert (idempotente) para permitir reimportar sem duplicar.
+ * `startPos` preserva a ordenação contínua entre lotes.
+ */
+export async function importChunk(type: string, cells: string[][], startPos: number): Promise<ImportResult> {
+  if (!Array.isArray(cells) || !cells.length) return { inserted: 0 };
   const { office } = await getContext();
   const supabase = await createClient();
+  const oid = office.id;
+
   if (type === "produto") {
-    const rows = prodRows(rowsJson);
-    if (!rows.length) return { error: "Nenhum registro reconhecido." };
-    await supabase.from("produto_rows").insert(rows.map((r, i) => ({ office_id: office.id, ...r, position: i })));
-    revalidatePath("/ibs");
-    redirect("/ibs?tab=produtos");
+    const rows = dedupeBy(
+      cells
+        .map((c, i) => ({
+          office_id: oid, ncm: String(c[0] ?? "").trim(), descr: String(c[1] ?? "").trim(),
+          cst: String(c[2] ?? "").trim(), cclass: String(c[3] ?? "").trim(),
+          aliq_ibs: String(c[4] ?? "").trim(), aliq_cbs: String(c[5] ?? "").trim(),
+          red_ibs: String(c[6] ?? "").trim(), red_cbs: String(c[7] ?? "").trim(),
+          position: startPos + i,
+        }))
+        .filter((r) => r.ncm),
+      (r) => r.ncm,
+    );
+    if (!rows.length) return { inserted: 0 };
+    const { error } = await supabase.from("produto_rows").upsert(rows, { onConflict: "office_id,ncm" });
+    return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
   }
+
   if (type === "vinculo") {
-    const rows = linkRows(rowsJson);
-    if (!rows.length) return { error: "Nenhum vínculo reconhecido." };
+    const rows = dedupeBy(
+      cells
+        .map((c, i) => ({ office_id: oid, cst: String(c[0] ?? "").trim(), cclass: String(c[1] ?? "").trim(), position: startPos + i }))
+        .filter((r) => r.cst && r.cclass),
+      (r) => `${r.cst}|${r.cclass}`,
+    );
+    if (!rows.length) return { inserted: 0 };
     const { error } = await supabase
       .from("cst_cclass_links")
-      .upsert(
-        rows.map((r, i) => ({ office_id: office.id, ...r, position: i })),
-        { onConflict: "office_id,cst,cclass", ignoreDuplicates: true },
-      );
-    if (error) return { error: error.message };
-    revalidatePath("/ibs");
-    redirect("/ibs?tab=dados");
+      .upsert(rows, { onConflict: "office_id,cst,cclass", ignoreDuplicates: true });
+    return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
   }
-  const rows = codeRows(rowsJson);
-  if (!rows.length) return { error: "Nenhum registro reconhecido." };
+
+  // cst | cclass
   const table = type === "cclass" ? "cclass_rows" : "cst_rows";
-  await supabase.from(table).insert(rows.map((r, i) => ({ office_id: office.id, ...r, position: i })));
+  const rows = dedupeBy(
+    cells
+      .map((c, i) => ({ office_id: oid, code: String(c[0] ?? "").trim(), descr: String(c[1] ?? "").trim(), position: startPos + i }))
+      .filter((r) => r.code),
+    (r) => r.code,
+  );
+  if (!rows.length) return { inserted: 0 };
+  const { error } = await supabase.from(table).upsert(rows, { onConflict: "office_id,code" });
+  return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
+}
+
+export async function finishImport(tab: "dados" | "produtos") {
   revalidatePath("/ibs");
-  redirect("/ibs?tab=dados");
+  redirect(`/ibs?tab=${tab}`);
 }
