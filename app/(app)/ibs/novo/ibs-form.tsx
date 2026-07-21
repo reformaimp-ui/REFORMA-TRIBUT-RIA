@@ -15,18 +15,32 @@ function pill(active: boolean): React.CSSProperties {
   return { fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: 8, cursor: "pointer", color: active ? "#fff" : "#4b4e58", background: active ? ACCENT : "#fff", border: `1px solid ${active ? ACCENT : "#e2e2de"}` };
 }
 
-const TEMPLATES: Record<string, { filename: string; content: string }> = {
+const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
   cst: {
-    filename: "modelo-cst.csv",
-    content: "200, Alíquota zero\n210, Alíquota reduzida\n400, Imunidade\n",
+    filename: "modelo-cst.xlsx",
+    rows: [
+      ["CST", "Descrição"],
+      ["200", "Alíquota zero"],
+      ["210", "Alíquota reduzida"],
+      ["400", "Imunidade"],
+    ],
   },
   cclass: {
-    filename: "modelo-cclasstrib.csv",
-    content: "200001, Cesta básica nacional — alíquota zero\n210001, Medicamentos — redução de 60%\n400001, Livros e periódicos — imunidade\n",
+    filename: "modelo-cclasstrib.xlsx",
+    rows: [
+      ["cClassTrib", "Descrição"],
+      ["200001", "Cesta básica nacional — alíquota zero"],
+      ["210001", "Medicamentos — redução de 60%"],
+      ["400001", "Livros e periódicos — imunidade"],
+    ],
   },
   produto: {
-    filename: "modelo-produtos.csv",
-    content: "1006.30.11, Arroz beneficiado, 200, 200001, 17,7%, 8,8%, 100%, 100%\n3004.90.99, Medicamento de uso humano, 210, 210001, 17,7%, 8,8%, 60%, 60%\n",
+    filename: "modelo-produtos.xlsx",
+    rows: [
+      ["NCM", "Descrição", "CST", "cClassTrib", "Alíq. IBS", "Alíq. CBS", "Red. IBS", "Red. CBS"],
+      ["1006.30.11", "Arroz beneficiado", "200", "200001", "17,7%", "8,8%", "100%", "100%"],
+      ["3004.90.99", "Medicamento de uso humano", "210", "210001", "17,7%", "8,8%", "60%", "60%"],
+    ],
   },
 };
 
@@ -43,6 +57,7 @@ function Batch({ type, placeholder, desc }: { type: string; placeholder: string;
       noun="registro(s)"
       confirmLabel={(n) => `Importar ${n} registro(s)`}
       template={TEMPLATES[type] ?? TEMPLATES.cst}
+      format="xlsx"
     />
   );
 }
@@ -70,7 +85,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {cstState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{cstState.error}</div> : null}
             <button type="submit" disabled={cstPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: cstPending ? 0.7 : 1 }}>Adicionar CST</button>
           </form>
-          <Batch type="cst" placeholder={"200, Alíquota zero\n210, Alíquota reduzida"} desc={<span>Cole uma linha por código — <b>CST, Descrição</b> — ou importe um .csv.</span>} />
+          <Batch type="cst" placeholder={"200\tAlíquota zero\n210\tAlíquota reduzida"} desc={<span>Uma linha por código — colunas <b>CST, Descrição</b> — ou importe um .xlsx.</span>} />
         </div>
       ) : null}
 
@@ -83,7 +98,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {ccState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{ccState.error}</div> : null}
             <button type="submit" disabled={ccPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: ccPending ? 0.7 : 1 }}>Adicionar cClassTrib</button>
           </form>
-          <Batch type="cclass" placeholder={"200001, Cesta básica nacional\n210001, Medicamentos — redução 60%"} desc={<span>Cole uma linha por código — <b>cClassTrib, Descrição</b> — ou importe um .csv.</span>} />
+          <Batch type="cclass" placeholder={"200001\tCesta básica nacional\n210001\tMedicamentos — redução 60%"} desc={<span>Uma linha por código — colunas <b>cClassTrib, Descrição</b> — ou importe um .xlsx.</span>} />
         </div>
       ) : null}
 
@@ -124,7 +139,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             {pState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{pState.error}</div> : null}
             <button type="submit" disabled={pPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: pPending ? 0.7 : 1 }}>Adicionar produto</button>
           </form>
-          <Batch type="produto" placeholder={"1006.30.11, Arroz beneficiado, 200, 200001, 17,7%, 8,8%, 100%, 100%"} desc={<span>Uma linha por produto — <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou .csv.</span>} />
+          <Batch type="produto" placeholder={"1006.30.11\tArroz beneficiado\t200\t200001\t17,7%\t8,8%\t100%\t100%"} desc={<span>Uma linha por produto — colunas <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou importe um .xlsx.</span>} />
         </div>
       ) : null}
     </div>

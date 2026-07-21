@@ -14,27 +14,28 @@ async function nextPos(table: string, officeId: string) {
   return count ?? 0;
 }
 
-function codeRows(text: string) {
-  return text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => l.split(",").map((c) => c.trim()))
-    .filter((c) => c[0])
-    .map((c) => ({ code: c[0], descr: c[1] || "" }));
+function parseCells(rowsJson: string): string[][] {
+  let cells: unknown;
+  try {
+    cells = JSON.parse(rowsJson);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(cells)) return [];
+  return cells
+    .map((r) => (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim()))
+    .filter((c) => c[0]);
 }
 
-function prodRows(text: string) {
-  return text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => l.split(",").map((c) => c.trim()))
-    .filter((c) => c[0])
-    .map((c) => ({
-      ncm: c[0], descr: c[1] || "", cst: c[2] || "", cclass: c[3] || "",
-      aliq_ibs: c[4] || "", aliq_cbs: c[5] || "", red_ibs: c[6] || "", red_cbs: c[7] || "",
-    }));
+function codeRows(rowsJson: string) {
+  return parseCells(rowsJson).map((c) => ({ code: c[0], descr: c[1] || "" }));
+}
+
+function prodRows(rowsJson: string) {
+  return parseCells(rowsJson).map((c) => ({
+    ncm: c[0], descr: c[1] || "", cst: c[2] || "", cclass: c[3] || "",
+    aliq_ibs: c[4] || "", aliq_cbs: c[5] || "", red_ibs: c[6] || "", red_cbs: c[7] || "",
+  }));
 }
 
 export async function addCst(_p: IbsState, fd: FormData): Promise<IbsState> {
@@ -75,17 +76,17 @@ export async function addProduto(_p: IbsState, fd: FormData): Promise<IbsState> 
 
 export async function addBatch(_p: IbsState, fd: FormData): Promise<IbsState> {
   const type = String(fd.get("type") || "cst");
-  const text = String(fd.get("batchText") || "");
+  const rowsJson = String(fd.get("rowsJson") || "");
   const { office } = await getContext();
   const supabase = await createClient();
   if (type === "produto") {
-    const rows = prodRows(text);
+    const rows = prodRows(rowsJson);
     if (!rows.length) return { error: "Nenhum registro reconhecido." };
     await supabase.from("produto_rows").insert(rows.map((r, i) => ({ office_id: office.id, ...r, position: i })));
     revalidatePath("/ibs");
     redirect("/ibs?tab=produtos");
   }
-  const rows = codeRows(text);
+  const rows = codeRows(rowsJson);
   if (!rows.length) return { error: "Nenhum registro reconhecido." };
   const table = type === "cclass" ? "cclass_rows" : "cst_rows";
   await supabase.from(table).insert(rows.map((r, i) => ({ office_id: office.id, ...r, position: i })));
