@@ -17,6 +17,12 @@ export type ProdRow = { ncm: string; descr: string; cst: string; cclass: string;
 
 const GRID = "110px 1.6fr 70px 90px 90px 90px 100px 100px";
 
+/** Exibição — não altera o dado salvo. Formata só quando há os 8 dígitos padrão. */
+function formatNcm(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  return d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : raw;
+}
+
 export function ProdutoTable({
   rows, cclassDescr, total, page, pageSize, q,
 }: {
@@ -83,7 +89,7 @@ export function ProdutoTable({
               <div className="hv-row" style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: chain?.length ? "none" : "1px solid #f0f0ed" }}>
                 <NcmInfo code={r.ncm}>
                   <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 2 }}>
-                    {r.ncm}
+                    {formatNcm(r.ncm)}
                   </div>
                 </NcmInfo>
                 <div style={{ fontSize: 12.5, fontWeight: 500 }}>{r.descr}</div>

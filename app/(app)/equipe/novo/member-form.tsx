@@ -37,7 +37,10 @@ export function MemberForm() {
       </div>
       <div>
         <div style={LBL}>E-mail</div>
-        <input className="fc" name="email" type="email" placeholder="pessoa@escritorio.com.br" style={INP} />
+        <input className="fc" name="email" type="email" required placeholder="pessoa@escritorio.com.br" style={INP} />
+        <div style={{ fontSize: 11, color: "#8a8d98", marginTop: 5 }}>
+          Enviamos um e-mail com um link para a pessoa definir a própria senha e entrar.
+        </div>
       </div>
       <div>
         <div style={LBL}>Cargo</div>
@@ -100,7 +103,7 @@ export function MemberForm() {
           opacity: pending ? 0.7 : 1,
         }}
       >
-        {pending ? "Convidando…" : "Convidar pessoa"}
+        {pending ? "Enviando convite…" : "Enviar convite"}
       </button>
     </form>
   );
