@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { av, headerDate } from "@/lib/design";
+import { headerDate } from "@/lib/design";
+import { Avatar } from "@/components/app/Avatar";
 import type { Member } from "@/lib/data";
 
 const TITLES: Record<string, string> = {
@@ -13,6 +14,7 @@ const TITLES: Record<string, string> = {
   equipe: "Equipe",
   ibs: "IBS e CBS",
   "base-conhecimento": "Base de conhecimento",
+  configuracoes: "Configurações",
 };
 
 export function Header({ members }: { members: Member[] }) {
@@ -40,13 +42,15 @@ export function Header({ members }: { members: Member[] }) {
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ display: "flex" }}>
           {members.map((p, i) => (
-            <div
+            <Avatar
               key={p.id}
-              title={p.name}
-              style={{ ...av(p.color, 28), border: "2px solid #fff", marginLeft: i ? -8 : 0 }}
-            >
-              {p.ini}
-            </div>
+              name={p.name}
+              color={p.color}
+              ini={p.ini}
+              avatarUrl={p.avatar_url}
+              size={28}
+              extraStyle={{ border: "2px solid #fff", marginLeft: i ? -8 : 0 }}
+            />
           ))}
         </div>
       </div>
