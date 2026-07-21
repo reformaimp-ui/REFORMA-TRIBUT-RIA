@@ -16,6 +16,7 @@ const NAV = [
   { seg: "equipe", label: "Equipe", icon: "team" },
   { seg: "ibs", label: "IBS e CBS", icon: "ibs" },
   { seg: "base-conhecimento", label: "Base de conhecimento", icon: "kb" },
+  { seg: "configuracoes", label: "Configurações", icon: "settings" },
 ] as const;
 
 function Icon({ name }: { name: string }) {
@@ -78,11 +79,23 @@ function Icon({ name }: { name: string }) {
           <line x1="9.6" y1="5.3" x2="9.6" y2="14" stroke="currentColor" strokeWidth="1.3" />
         </svg>
       );
-    default:
+    case "kb":
       return (
         <svg width="15" height="15" viewBox="0 0 15 15">
           <path d="M2 2.5A1.5 1.5 0 013.5 1H13v11.5H3.5A1.5 1.5 0 002 14z" fill="none" stroke="currentColor" strokeWidth="1.6" />
           <line x1="2" y1="11.5" x2="13" y2="11.5" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      );
+    default:
+      return (
+        <svg width="15" height="15" viewBox="0 0 15 15">
+          <circle cx="7.5" cy="7.5" r="2.1" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M7.5 1.5v1.6M7.5 12.9v1.6M13.5 7.5h-1.6M3.6 7.5H2M11.6 3.4l-1.13 1.13M4.53 10.47L3.4 11.6M11.6 11.6l-1.13-1.13M4.53 4.53L3.4 3.4"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
         </svg>
       );
   }
