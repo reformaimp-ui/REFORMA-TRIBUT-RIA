@@ -38,6 +38,12 @@ function prodRows(rowsJson: string) {
   }));
 }
 
+function linkRows(rowsJson: string) {
+  return parseCells(rowsJson)
+    .filter((c) => c[1])
+    .map((c) => ({ cst: c[0], cclass: c[1] }));
+}
+
 export async function addCst(_p: IbsState, fd: FormData): Promise<IbsState> {
   const code = String(fd.get("code") || "").trim();
   if (!code) return { error: "Informe o código." };
@@ -74,6 +80,23 @@ export async function addProduto(_p: IbsState, fd: FormData): Promise<IbsState> 
   redirect("/ibs?tab=produtos");
 }
 
+export async function addCstLink(_p: IbsState, fd: FormData): Promise<IbsState> {
+  const cst = String(fd.get("cst") || "").trim();
+  const cclass = String(fd.get("cclass") || "").trim();
+  if (!cst || !cclass) return { error: "Informe o CST e o cClassTrib." };
+  const { office } = await getContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("cst_cclass_links")
+    .upsert(
+      { office_id: office.id, cst, cclass, position: await nextPos("cst_cclass_links", office.id) },
+      { onConflict: "office_id,cst,cclass", ignoreDuplicates: true },
+    );
+  if (error) return { error: error.message };
+  revalidatePath("/ibs");
+  redirect("/ibs?tab=dados");
+}
+
 export async function addBatch(_p: IbsState, fd: FormData): Promise<IbsState> {
   const type = String(fd.get("type") || "cst");
   const rowsJson = String(fd.get("rowsJson") || "");
@@ -85,6 +108,19 @@ export async function addBatch(_p: IbsState, fd: FormData): Promise<IbsState> {
     await supabase.from("produto_rows").insert(rows.map((r, i) => ({ office_id: office.id, ...r, position: i })));
     revalidatePath("/ibs");
     redirect("/ibs?tab=produtos");
+  }
+  if (type === "vinculo") {
+    const rows = linkRows(rowsJson);
+    if (!rows.length) return { error: "Nenhum vínculo reconhecido." };
+    const { error } = await supabase
+      .from("cst_cclass_links")
+      .upsert(
+        rows.map((r, i) => ({ office_id: office.id, ...r, position: i })),
+        { onConflict: "office_id,cst,cclass", ignoreDuplicates: true },
+      );
+    if (error) return { error: error.message };
+    revalidatePath("/ibs");
+    redirect("/ibs?tab=dados");
   }
   const rows = codeRows(rowsJson);
   if (!rows.length) return { error: "Nenhum registro reconhecido." };

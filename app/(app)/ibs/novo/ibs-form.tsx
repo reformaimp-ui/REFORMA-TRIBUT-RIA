@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { ImportPanel } from "@/components/app/ImportPanel";
-import { addBatch, addCclass, addCst, addProduto, type IbsState } from "../actions";
+import { addBatch, addCclass, addCst, addCstLink, addProduto, type IbsState } from "../actions";
 
 type Code = { code: string; descr: string };
 const INP: React.CSSProperties = { width: "100%", fontSize: 13, padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" };
@@ -42,6 +42,23 @@ const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
       ["3004.90.99", "Medicamento de uso humano", "210", "210001", "17,7%", "8,8%", "60%", "60%"],
     ],
   },
+  vinculo: {
+    filename: "modelo-vinculo-cst-cclasstrib.xlsx",
+    rows: [
+      ["CST", "cClassTrib"],
+      ["000", "000001"],
+      ["000", "000002"],
+      ["000", "000003"],
+      ["000", "000004"],
+      ["000", "000005"],
+      ["010", "010001"],
+      ["010", "010002"],
+      ["011", "011001"],
+      ["011", "011002"],
+      ["011", "011003"],
+      ["011", "011004"],
+    ],
+  },
 };
 
 function Batch({ type, placeholder, desc }: { type: string; placeholder: string; desc: React.ReactNode }) {
@@ -63,10 +80,13 @@ function Batch({ type, placeholder, desc }: { type: string; placeholder: string;
 }
 
 export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cstRows: Code[]; cclassRows: Code[] }) {
-  const [type, setType] = useState(initial === "produto" ? "produto" : initial === "cclass" ? "cclass" : "cst");
+  const [type, setType] = useState(
+    initial === "produto" ? "produto" : initial === "cclass" ? "cclass" : initial === "vinculo" ? "vinculo" : "cst",
+  );
   const [cstState, cstAction, cstPending] = useActionState<IbsState, FormData>(addCst, {});
   const [ccState, ccAction, ccPending] = useActionState<IbsState, FormData>(addCclass, {});
   const [pState, pAction, pPending] = useActionState<IbsState, FormData>(addProduto, {});
+  const [lkState, lkAction, lkPending] = useActionState<IbsState, FormData>(addCstLink, {});
 
   return (
     <div>
@@ -74,6 +94,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
         <div onClick={() => setType("cst")} style={pill(type === "cst")}>CST</div>
         <div onClick={() => setType("cclass")} style={pill(type === "cclass")}>cClassTrib</div>
         <div onClick={() => setType("produto")} style={pill(type === "produto")}>Tributação de produto</div>
+        <div onClick={() => setType("vinculo")} style={pill(type === "vinculo")}>Vínculo CST × cClassTrib</div>
       </div>
 
       {type === "cst" ? (
@@ -140,6 +161,33 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             <button type="submit" disabled={pPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: pPending ? 0.7 : 1 }}>Adicionar produto</button>
           </form>
           <Batch type="produto" placeholder={"1006.30.11\tArroz beneficiado\t200\t200001\t17,7%\t8,8%\t100%\t100%"} desc={<span>Uma linha por produto — colunas <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou importe um .xlsx.</span>} />
+        </div>
+      ) : null}
+
+      {type === "vinculo" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+          <form action={lkAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".06em" }}>Cadastro individual</div>
+            <div>
+              <div style={LBL}>CST</div>
+              {cstRows.length ? (
+                <select name="cst" defaultValue={cstRows[0]?.code} style={INP}>{cstRows.map((r) => <option key={r.code} value={r.code}>{r.code} — {r.descr}</option>)}</select>
+              ) : (
+                <input className="fc" name="cst" placeholder="Ex.: 000" autoFocus style={MONO} />
+              )}
+            </div>
+            <div>
+              <div style={LBL}>cClassTrib</div>
+              {cclassRows.length ? (
+                <select name="cclass" defaultValue={cclassRows[0]?.code} style={INP}>{cclassRows.map((r) => <option key={r.code} value={r.code}>{r.code} — {r.descr}</option>)}</select>
+              ) : (
+                <input className="fc" name="cclass" placeholder="Ex.: 000001" style={MONO} />
+              )}
+            </div>
+            {lkState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{lkState.error}</div> : null}
+            <button type="submit" disabled={lkPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: lkPending ? 0.7 : 1 }}>Vincular</button>
+          </form>
+          <Batch type="vinculo" placeholder={"000\t000001\n000\t000002\n010\t010001"} desc={<span>Uma linha por vínculo — colunas <b>CST, cClassTrib</b> — ou importe um .xlsx.</span>} />
         </div>
       ) : null}
     </div>

@@ -27,7 +27,7 @@ export function CclassTable({ rows }: { rows: { code: string; descr: string }[] 
           <div>cClassTrib</div><div>Descrição</div>
         </div>
         {filtered.map((r, i) => (
-          <CclassInfo key={i} code={r.code} descr={r.descr}>
+          <CclassInfo key={`${r.code}-${i}`} code={r.code} descr={r.descr}>
             <div className="hv-row" style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, alignItems: "center", padding: "10px 18px", borderBottom: "1px solid #f0f0ed" }}>
               <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: "#7c3aed" }}>{r.code}</div>
               <div style={{ fontSize: 12.5, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descr}</div>
