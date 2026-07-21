@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reforma 2033 — Gestão da transição tributária</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234653d6'/%3E%3Ctext x='16' y='22' font-size='18' font-weight='700' font-family='sans-serif' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#4653d6}
+body{margin:0;font-family:'Instrument Sans',system-ui,sans-serif;background:#f4f4f2;color:#1c1e26;-webkit-font-smoothing:antialiased}
+a{color:#4653d6;text-decoration:none}a:hover{color:#333fb0}
+*{box-sizing:border-box}
+input,textarea,select{font-family:inherit}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#d8d8d4;border-radius:6px;border:2px solid #f4f4f2}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.hv-nav:hover{background:#f2f2ef}
+.hv-card:hover{border-color:#c9c9c4!important}
+.hv-btn:hover{filter:brightness(1.08)}
+.hv-dim:hover{filter:brightness(.97)}
+.hv-danger:hover{color:#b3402e!important}
+.hv-soft:hover{background:#f7f7f4}
+.hv-light:hover{background:#f4f4f2}
+.hv-row:hover{background:#fafaf8}
+.hv-gray:hover{color:#8a8d98!important}
+.hv-redbg:hover{background:#fdf2f0}
+.hv-inbdr:hover{border-color:#e2e2de!important}
+.hv-port:hover{transform:translateY(-50%) scale(1.35)!important}
+.edge{pointer-events:stroke;cursor:pointer}
+.edge:hover{stroke:#d9534f}
+input.fc:focus,textarea.fc:focus{border-color:var(--accent)!important}
+#loading{display:flex;align-items:center;justify-content:center;height:100vh;color:#8a8d98;font-size:13px}
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>Babel.registerPreset('react-classic', { presets: [[Babel.availablePresets.react, { runtime: 'classic' }]] });</script>
+</head>
+<body>
+<div id="root"><div id="loading">Carregando o escritório…</div></div>
+<script type="text/babel" data-presets="react-classic">
+const ACCENT = '#4653d6';
+const STORAGE_KEY = 'reforma2033-state-v1';
+
+/* css-string -> React style object */
+const _sc = new Map();
+function S(css) {
+  if (_sc.has(css)) return _sc.get(css);
+  const o = {};
+  css.split(';').forEach(d => {
+    const i = d.indexOf(':'); if (i < 0) return;
+    const k = d.slice(0, i).trim(); if (!k) return;
+    const val = d.slice(i + 1).trim();
+    o[k.startsWith('--') ? k : k.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = val;
+  });
+  if (_sc.size > 4000) _sc.clear();
+  _sc.set(css, o);
+  return o;
+}
+
+function isoDate(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+const toBRshort = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '—';
+const toBRfull = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '—';
+
+/* ---------- small shared pieces ---------- */
+const FLabel = ({ children }) => <div style={S(`font-size:10.5px;font-weight:600;color:#8a8d98;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px`)}>{children}</div>;
+const INP = `width:100%;font-size:13px;padding:9px 11px;border-radius:8px;border:1px solid #e2e2de;outline:none`;
+const AUTH_INP = `width:100%;font-size:13.5px;padding:11px 14px;border-radius:10px;border:1.5px solid #e2e2de;outline:none`;
+
+const TrashIcon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 15 15"><path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+);
+const FlowIcon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 15 15"><circle cx="3" cy="3.5" r="2.2" fill="currentColor"></circle><circle cx="12" cy="7.5" r="2.2" fill="currentColor" opacity=".45"></circle><circle cx="4" cy="12" r="2.2" fill="currentColor" opacity=".7"></circle><path d="M5 4.5l5 2M5.5 10.8l4.5-2.5" stroke="currentColor" strokeWidth="1.3"></path></svg>
+);
+const CheckMark = ({ size = 10 }) => (
+  <svg width={size} height={size} viewBox="0 0 10 10"><path d="M1 5l2.5 2.5L9 1.5" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+);
+
+const BackBar = ({ onBack, title, children }) => (
+  <div style={S(`flex:none;display:flex;align-items:center;gap:12px;padding:14px 22px;background:#fff;border-bottom:1px solid #e7e7e3`)}>
+    <div onClick={onBack} className="hv-light" style={S(`width:30px;height:30px;border-radius:8px;display:grid;place-items:center;cursor:pointer;color:#4b4e58`)}>
+      <svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+    </div>
+    <div style={S(`font-size:13px;font-weight:700`)}>{title}</div>
+    {children}
+  </div>
+);
+
+const Btn = ({ onClick, pad, extra, children }) => (
+  <div onClick={onClick} className="hv-btn" style={S(`font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:${pad || '7px 14px'};cursor:pointer;${extra || ''}`)}>{children}</div>
+);
+
+const BatchPanel = (p) => (
+  <div style={S(`display:flex;flex-direction:column;gap:12px;background:#fafaf8;border:1px solid #ececea;border-radius:12px;padding:18px`)}>
+    <div style={S(`font-size:11px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.06em`)}>Adicionar vários de uma vez</div>
+    <div style={S(`font-size:11.5px;color:#8a8d98;line-height:1.5`)}>{p.desc}</div>
+    <input type="file" accept=".csv,text/csv" onChange={p.onFile} style={S(`font-size:12px`)} />
+    <textarea value={p.text} onChange={p.onText} rows={7} placeholder={p.placeholder} style={S(`width:100%;font:400 12px 'JetBrains Mono',monospace;padding:10px 12px;border-radius:9px;border:1px solid #e2e2de;outline:none;resize:vertical;line-height:1.6;background:#fff`)}></textarea>
+    <div style={S(`font-size:12px;color:#4b4e58`)}>{p.count} {p.noun} reconhecido(s)</div>
+    <div onClick={p.onConfirm} className="hv-btn" style={S(`align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 16px;border-radius:8px;cursor:pointer`)}>{p.confirmLabel}</div>
+  </div>
+);
+
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    const team = [
+      { id: 'mc', ini: 'MC', name: 'Marina Costa', color: '#4653d6', email: 'marina.costa@escritorio.com.br', cargo: 'Sócia-fundadora', permissao: 'Admin' },
+      { id: 'rt', ini: 'RT', name: 'Rafael Teixeira', color: '#0e7a6f', email: 'rafael.teixeira@escritorio.com.br', cargo: 'Contador sênior', permissao: 'Membro' },
+      { id: 'jp', ini: 'JP', name: 'Juliana Prado', color: '#b3512e', email: 'juliana.prado@escritorio.com.br', cargo: 'Analista fiscal', permissao: 'Membro' },
+      { id: 'ds', ini: 'DS', name: 'Diego Santana', color: '#5b5f6b', email: 'diego.santana@escritorio.com.br', cargo: 'Analista fiscal', permissao: 'Membro' }
+    ];
+    const defaults = {
+      authView: 'login', officeName: '',
+      loginEmail: '', loginPassword: '', loginError: '',
+      signupOfficeName: '', signupResponsavel: '', signupCnpj: '', signupEmail: '', signupPassword: '', signupConfirm: '', signupError: '',
+      tab: 'dash', team,
+      taskFilter: 'all', clientFilter: 'all',
+      view: 'list', detailTaskId: null, detailActiveClient: null, addingLinkDetail: false, detailSubtaskInput: '', commentDraft: '', detailClientSearch: '',
+      newTaskTitle: '', newTaskDescription: '', newTaskCategory: 'Fiscal', newTaskStart: '', newTaskDue: '', newTaskClientSearch: '', newTaskFlowId: '',
+      newTaskPeople: [], newTaskClients: [], newTaskSubtasks: [], newTaskSubtaskInput: '',
+      newTaskRec: false, newTaskRecLabel: 'mensal',
+      clientView: 'list', clientDetailId: null, newClientName: '', newClientSetor: '', newClientRegime: 'Simples Nacional', batchText: '',
+      teamView: 'list', newMemberName: '', newMemberEmail: '', newMemberCargo: '', newMemberPermissao: 'Membro', newMemberColor: '#4653d6',
+      ibsSubTab: 'dados', ibsView: 'list', ibsAddType: 'cst', ibsBatchText: '',
+      newCstCode: '', newCstDesc: '', newCclassCode: '', newCclassDesc: '',
+      newProdNcm: '', newProdDesc: '', newProdCst: '200', newProdCclass: '200001', newProdAliqIbs: '17,7%', newProdAliqCbs: '8,8%', newProdRedIbs: '0%', newProdRedCbs: '0%',
+      cstRows: [
+        { code: '000', desc: 'Tributação integral — regime regular, sem redução ou benefício' },
+        { code: '101', desc: 'Contribuinte do regime regular — operação onerosa com direito a crédito' },
+        { code: '200', desc: 'Alíquota zero' },
+        { code: '210', desc: 'Alíquota reduzida' },
+        { code: '400', desc: 'Imunidade' },
+        { code: '410', desc: 'Não incidência' },
+        { code: '500', desc: 'Suspensão' },
+        { code: '550', desc: 'Diferimento' },
+        { code: '620', desc: 'Tributação monofásica — combustíveis' },
+        { code: '800', desc: 'Tributação pelo Imposto Seletivo' },
+        { code: '820', desc: 'Tributação em documento específico' },
+        { code: '900', desc: 'Outras hipóteses não especificadas' }
+      ],
+      cclassRows: [
+        { code: '000001', desc: 'Tributação integral — operação padrão, sem benefício' },
+        { code: '101001', desc: 'Operação onerosa com direito a crédito integral' },
+        { code: '200001', desc: 'Cesta básica nacional — alíquota zero' },
+        { code: '200002', desc: 'Produtos hortícolas, frutas e carnes in natura — alíquota zero' },
+        { code: '210001', desc: 'Medicamentos registrados na Anvisa — redução de 60%' },
+        { code: '210002', desc: 'Dispositivos médicos (Anexo XII da LC 214/2025) — redução de 60%' },
+        { code: '400001', desc: 'Imunidade constitucional — livros, jornais e periódicos' },
+        { code: '550001', desc: 'Diferimento — óleo diesel e biodiesel' },
+        { code: '620001', desc: 'Monofásico — gasolina e etanol' },
+        { code: '800001', desc: 'Imposto Seletivo — cigarros e produtos fumígenos' },
+        { code: '900001', desc: 'Outras situações não especificadas nas demais classificações' }
+      ],
+      produtoRows: [
+        { ncm: '1006.30.11', desc: 'Arroz beneficiado, polido', cst: '200', cclass: '200001', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '100%', redCbs: '100%' },
+        { ncm: '0201.10.00', desc: 'Carne bovina in natura, resfriada', cst: '200', cclass: '200002', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '100%', redCbs: '100%' },
+        { ncm: '3004.90.99', desc: 'Medicamento de uso humano', cst: '210', cclass: '210001', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '60%', redCbs: '60%' },
+        { ncm: '9018.90.99', desc: 'Dispositivo médico (Anexo XII)', cst: '210', cclass: '210002', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '60%', redCbs: '60%' },
+        { ncm: '2710.12.59', desc: 'Gasolina C', cst: '620', cclass: '620001', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '0%', redCbs: '0%' },
+        { ncm: '8517.12.31', desc: 'Smartphone', cst: '000', cclass: '000001', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '0%', redCbs: '0%' },
+        { ncm: '4901.10.00', desc: 'Livro didático', cst: '400', cclass: '400001', aliqIbs: '0%', aliqCbs: '0%', redIbs: '—', redCbs: '—' },
+        { ncm: '2402.20.00', desc: 'Cigarros contendo tabaco', cst: '800', cclass: '800001', aliqIbs: '17,7%', aliqCbs: '8,8%', redIbs: '0%', redCbs: '0%' }
+      ],
+      tasks: [
+        { id: 1, title: 'Parametrizar destaque CBS/IBS no ERP', category: 'Sistemas', people: ['mc'], startDate: '2026-07-01', dueDate: '2026-07-22', rec: false, flowId: 'f1',
+          subtasks: [{ id: 't1s1', title: 'Levantar parâmetros do ERP' }, { id: 't1s2', title: 'Configurar campos CBS/IBS' }, { id: 't1s3', title: 'Testar emissão de NF-e' }, { id: 't1s4', title: 'Validar com o cliente' }],
+          links: [{ clientId: 'c1', done: ['t1s1', 't1s2', 't1s3'] }, { clientId: 'c2', done: ['t1s1', 't1s2'] }, { clientId: 'c3', done: ['t1s1'] }] },
+        { id: 2, title: 'Revisar cadastro NCM / CST / cClassTrib dos produtos', category: 'Fiscal', people: ['jp'], startDate: '2026-07-01', dueDate: '2026-07-18', rec: false,
+          subtasks: [{ id: 't2s1', title: 'Mapear NCM por produto' }, { id: 't2s2', title: 'Definir cClassTrib' }, { id: 't2s3', title: 'Atualizar cadastro no sistema' }, { id: 't2s4', title: 'Homologar com o cliente' }],
+          links: [{ clientId: 'c4', done: ['t2s1', 't2s2'] }, { clientId: 'c8', done: [] }] },
+        { id: 3, title: 'Conferir destaque IBS 0,1% nas NF-e emitidas no mês', category: 'Fiscal', people: ['rt', 'jp'], startDate: '2026-07-01', dueDate: '2026-07-31', rec: true, recLabel: 'mensal', flowId: 'f1',
+          subtasks: [{ id: 't3s1', title: 'Extrair NF-e do mês' }, { id: 't3s2', title: 'Conferir destaque 0,9%/0,1%' }, { id: 't3s3', title: 'Registrar divergências' }, { id: 't3s4', title: 'Enviar relatório ao cliente' }],
+          links: [{ clientId: 'c1', done: ['t3s1', 't3s2', 't3s3', 't3s4'] }, { clientId: 'c2', done: ['t3s1', 't3s2', 't3s3', 't3s4'] }, { clientId: 'c3', done: ['t3s1', 't3s2'] }, { clientId: 'c4', done: ['t3s1', 't3s2', 't3s3'] }, { clientId: 'c5', done: ['t3s1'] }, { clientId: 'c6', done: ['t3s1', 't3s2', 't3s3', 't3s4'] }, { clientId: 'c7', done: ['t3s1', 't3s2', 't3s3', 't3s4'] }, { clientId: 'c8', done: ['t3s1', 't3s2'] }] },
+        { id: 4, title: 'Habilitar cliente no piloto de split payment', category: 'Sistemas', people: ['mc'], startDate: '2026-07-15', dueDate: '2026-07-31', rec: false,
+          subtasks: [{ id: 't4s1', title: 'Confirmar elegibilidade' }, { id: 't4s2', title: 'Configurar meio de pagamento' }, { id: 't4s3', title: 'Testar transação piloto' }, { id: 't4s4', title: 'Aprovar produção' }],
+          links: [{ clientId: 'c2', done: ['t4s1'] }, { clientId: 'c1', done: [] }] },
+        { id: 5, title: 'Simular carga tributária pós-reforma (cenário 2027)', category: 'Compliance', people: ['ds'], startDate: '2026-07-01', dueDate: '2026-07-24', rec: false,
+          subtasks: [{ id: 't5s1', title: 'Coletar dados históricos' }, { id: 't5s2', title: 'Rodar simulação' }, { id: 't5s3', title: 'Analisar resultados' }, { id: 't5s4', title: 'Apresentar ao cliente' }],
+          links: [{ clientId: 'c3', done: ['t5s1', 't5s2', 't5s3'] }] },
+        { id: 6, title: 'Mapear benefícios fiscais de ICMS a compensar', category: 'Fiscal', people: ['rt'], startDate: '2026-06-01', dueDate: '2026-07-10', rec: false,
+          subtasks: [{ id: 't6s1', title: 'Levantar benefícios vigentes' }, { id: 't6s2', title: 'Verificar aplicabilidade pós-reforma' }, { id: 't6s3', title: 'Calcular impacto' }, { id: 't6s4', title: 'Elaborar parecer' }],
+          links: [{ clientId: 'c3', done: [] }] },
+        { id: 7, title: 'Atualizar contratos com cláusula de repasse tributário', category: 'Contratual', people: ['jp'], startDate: '2026-07-10', dueDate: '2026-08-05', rec: false,
+          subtasks: [{ id: 't7s1', title: 'Revisar minuta atual' }, { id: 't7s2', title: 'Incluir cláusula de repasse' }, { id: 't7s3', title: 'Validar com jurídico' }, { id: 't7s4', title: 'Assinar aditivo' }],
+          links: [{ clientId: 'c5', done: [] }] },
+        { id: 8, title: 'Treinamento interno: apuração assistida da CBS', category: 'Treinamento', people: ['ds'], startDate: '2026-07-01', dueDate: '2026-07-08', rec: false,
+          subtasks: [{ id: 't8s1', title: 'Preparar material' }, { id: 't8s2', title: 'Agendar sessão' }, { id: 't8s3', title: 'Aplicar treinamento' }, { id: 't8s4', title: 'Coletar feedback' }], links: [] },
+        { id: 9, title: 'Checklist de adequação para novos clientes', category: 'Compliance', people: ['ds'], startDate: '2026-07-01', dueDate: '2026-07-30', rec: true, recLabel: 'anual',
+          subtasks: [{ id: 't9s1', title: 'Definir checklist padrão' }, { id: 't9s2', title: 'Revisar com compliance' }, { id: 't9s3', title: 'Publicar para equipe' }, { id: 't9s4', title: 'Treinar equipe' }], links: [] }
+      ],
+      chgs: [
+        { id: 1, month: '2026-07', severity: 'informativo', title: 'CNPJ alfanumérico', desc: '', date: '01/07/2026', badge: 'SISTEMAS' },
+        { id: 2, month: '2026-08', severity: 'critico', title: 'Obrigatoriedade dos campos de IBS e CBS nas NFs', desc: 'Todos os documentos eletrônicos deverão incluir a alíquota teste de 1% (0,1% de IBS e 0,9% de CBS).', date: '03/08/2026', badge: 'SISTEMAS' },
+        { id: 3, month: '2026-08', severity: 'importante', title: 'NFS-e com destaque de IBS e CBS', desc: '', date: '03/08/2026', badge: 'NFS' },
+        { id: 4, month: '2026-09', severity: 'critico', title: 'NFS-e e Simples Nacional: obrigatoriedade de emissão através do Emissor Nacional', desc: 'ME e EPP optantes pelo Simples Nacional deverão usar obrigatoriamente o Emissor Nacional a partir de 01/09/2026.', date: '01/09/2026', badge: 'SISTEMAS' },
+        { id: 5, month: '2026-09', severity: 'critico', title: 'Escolha das empresas do Simples Nacional', desc: 'Cálculo de IBS e CBS por dentro ou por fora do Simples?', date: '01/09/2026', badge: '' },
+        { id: 6, month: '2027-01', severity: 'importante', title: 'PIS e COFINS serão formalmente extintas — recolhimento da CBS', desc: 'A partir de 1º de janeiro de 2027, as contribuições para o PIS e a COFINS serão formalmente extintas, passando a ter o recolhimento da CBS em alíquota cheia.', date: '01/01/2027', badge: 'SISTEMAS' },
+        { id: 7, month: '2027-01', severity: 'informativo', title: 'Imposto Seletivo entra em vigor', desc: 'IS passa a incidir sobre bens e serviços prejudiciais à saúde e ao meio ambiente.', date: '01/01/2027', badge: '' },
+        { id: 8, month: '2029-01', severity: 'importante', title: 'Início da transição do ICMS/ISS para o IBS', desc: 'Redução gradual das alíquotas de ICMS e ISS, compensada pelo aumento do IBS, até 2032.', date: '01/01/2029', badge: '' }
+      ],
+      events: [
+        { date: '2026-06-15', title: 'DCTFWeb — mai/26', tipo: 'acessoria', detail: 'Declaração de débitos previdenciários' },
+        { date: '2026-06-22', title: 'DAS — Simples Nacional', tipo: 'pagamento', detail: 'Vencimento prorrogado (dia 20 = sáb)' },
+        { date: '2026-07-10', title: 'EFD ICMS/IPI — jun/26', tipo: 'acessoria', detail: 'Escrituração fiscal digital (SP)' },
+        { date: '2026-07-14', title: 'EFD-Contribuições — jun/26', tipo: 'acessoria', detail: 'PIS/Cofins — todos os clientes do Lucro Real' },
+        { date: '2026-07-15', title: 'DCTFWeb — jun/26', tipo: 'acessoria', detail: 'Transmissão até 15º dia útil' },
+        { date: '2026-07-20', title: 'DAS — Simples Nacional', tipo: 'pagamento', detail: '9 clientes do Simples' },
+        { date: '2026-07-20', title: 'DIRBI — jun/26', tipo: 'acessoria', detail: 'Declaração de incentivos e benefícios fiscais' },
+        { date: '2026-07-24', title: 'Auditoria do destaque CBS 0,9% + IBS 0,1%', tipo: 'reforma', detail: 'Conferência do ano-teste — dispensa de recolhimento exige destaque correto' },
+        { date: '2026-07-25', title: 'PIS/Cofins — recolhimento', tipo: 'pagamento', detail: 'Competência jun/26' },
+        { date: '2026-07-28', title: 'Comitê interno da reforma', tipo: 'interno', detail: 'Reunião mensal — status de adequação por cliente' },
+        { date: '2026-07-31', title: 'Adesão ao piloto de split payment', tipo: 'reforma', detail: 'Janela de habilitação — TechNova e Andrade' },
+        { date: '2026-08-14', title: 'EFD-Contribuições — jul/26', tipo: 'acessoria', detail: 'PIS/Cofins' },
+        { date: '2026-08-20', title: 'DAS — Simples Nacional', tipo: 'pagamento', detail: 'Competência jul/26' },
+        { date: '2026-08-31', title: 'Relatório trimestral de adequação', tipo: 'interno', detail: 'Enviar a todos os clientes' }
+      ],
+      cliFilter: 'Todos',
+      clients: [
+        { id: 'c1', ini: 'SA', color: '#4653d6', name: 'Supermercado Andrade', setor: 'Varejo alimentar', regime: 'Lucro Real', resp: 'mc', pct: 78, status: 'Em dia' },
+        { id: 'c2', ini: 'TN', color: '#0e7a6f', name: 'TechNova Sistemas', setor: 'SaaS / Tecnologia', regime: 'Lucro Presumido', resp: 'mc', pct: 64, status: 'Em dia' },
+        { id: 'c3', ini: 'MR', color: '#b3512e', name: 'Metalúrgica Rio Claro', setor: 'Indústria', regime: 'Lucro Real', resp: 'rt', pct: 41, status: 'Atenção' },
+        { id: 'c4', ini: 'FV', color: '#5b5f6b', name: 'Farmácia Vitalle', setor: 'Varejo farmacêutico', regime: 'Simples Nacional', resp: 'jp', pct: 55, status: 'Em dia' },
+        { id: 'c5', ini: 'CH', color: '#8a4fd3', name: 'Construtora Horizonte', setor: 'Construção civil', regime: 'Lucro Presumido', resp: 'jp', pct: 23, status: 'Crítico' },
+        { id: 'c6', ini: 'TV', color: '#1d6fb8', name: 'Transportes Vale Sul', setor: 'Logística', regime: 'Lucro Real', resp: 'rt', pct: 69, status: 'Em dia' },
+        { id: 'c7', ini: 'CB', color: '#c9435a', name: 'Clínica Bem Viver', setor: 'Saúde', regime: 'Simples Nacional', resp: 'ds', pct: 87, status: 'Em dia' },
+        { id: 'c8', ini: 'CS', color: '#2f8f6f', name: 'Café Serrano', setor: 'Alimentação', regime: 'Simples Nacional', resp: 'ds', pct: 34, status: 'Atenção' }
+      ],
+      selNote: 0,
+      notes: [
+        { title: 'LC 214/2025 — regulamentação do IBS, CBS e IS', sub: 'Lei complementar · sancionada em 16/01/2025', tags: ['Legislação', 'CBS/IBS'], meta: 'Atualizado em 02 jul 2026 · Marina Costa', paras: [
+          'A LC 214/2025 institui o IBS (Imposto sobre Bens e Serviços), a CBS (Contribuição sobre Bens e Serviços) e o Imposto Seletivo, regulamentando a reforma aprovada pela EC 132/2023.',
+          'Em 2026, ano-teste, a CBS é destacada à alíquota de 0,9% e o IBS a 0,1% nos documentos fiscais. O recolhimento é dispensado para quem cumprir as obrigações acessórias — ou seja, o destaque correto na NF-e é o que garante a dispensa.',
+          'Pontos de atenção para a carteira: regimes específicos (combustíveis, saúde, educação), cesta básica nacional com alíquota zero e o cashback para famílias de baixa renda.',
+          'A partir de 2027 a CBS passa à alíquota cheia, PIS e Cofins são extintos e o Imposto Seletivo entra em vigor sobre bens prejudiciais à saúde e ao meio ambiente.'
+        ]},
+        { title: 'EC 132/2023 — a emenda da reforma', sub: 'Emenda constitucional · dez/2023', tags: ['Legislação'], meta: 'Atualizado em 12 mai 2026 · Diego Santana', paras: [
+          'A EC 132/2023 cria o IVA dual brasileiro: CBS federal substituindo PIS/Cofins, e IBS compartilhado entre estados e municípios substituindo ICMS e ISS.',
+          'Princípios centrais: não cumulatividade plena, tributação no destino, legislação uniforme e devolução personalizada (cashback).',
+          'A transição do ICMS/ISS para o IBS ocorre de 2029 a 2032, com redução gradual das alíquotas antigas, até a vigência integral do novo sistema em 2033.'
+        ]},
+        { title: 'PLP 108/2024 — Comitê Gestor do IBS', sub: 'Projeto de lei complementar · em tramitação', tags: ['Legislação', 'IBS'], meta: 'Atualizado em 20 jun 2026 · Rafael Teixeira', paras: [
+          'O PLP 108/2024 disciplina o Comitê Gestor do IBS (CG-IBS), responsável por arrecadar, compensar e distribuir a receita do IBS entre estados e municípios, além do contencioso administrativo.',
+          'Também trata do ITCMD (progressividade obrigatória) e de regras de transição da distribuição da arrecadação.',
+          'Impacto prático: o CG-IBS será o interlocutor da apuração assistida do IBS — acompanhar a regulamentação dos processos de restituição e compensação.'
+        ]},
+        { title: 'NT NF-e 2025.002 — campos CBS/IBS/IS', sub: 'Nota técnica · layout de documento fiscal', tags: ['Operacional', 'NF-e'], meta: 'Atualizado em 08 jul 2026 · Marina Costa', paras: [
+          'A nota técnica define os novos grupos de tributação da NF-e/NFC-e: cClassTrib (código de classificação tributária), grupos de CBS, IBS (UF e município) e IS, com campos de base de cálculo, alíquota e valor.',
+          'Erros comuns na carteira: cClassTrib incompatível com o CST, ausência de destaque em operações com alíquota zero e arredondamento divergente entre ERP e SEFAZ.',
+          'Checklist: validar de-para NCM → cClassTrib, atualizar o layout no ERP e monitorar rejeições específicas dos novos grupos.'
+        ]},
+        { title: 'Split payment — como funciona', sub: 'Nota interna · mecanismo de recolhimento', tags: ['Conceito', 'Pagamentos'], meta: 'Atualizado em 30 jun 2026 · Juliana Prado', paras: [
+          'No split payment, o valor do tributo é segregado no momento da liquidação financeira: o meio de pagamento direciona a parcela de CBS/IBS diretamente ao fisco, e o líquido ao fornecedor.',
+          'O modelo reduz inadimplência e fraude, mas exige conciliação fina entre documentos fiscais, recebíveis e extratos — o crédito do adquirente fica condicionado ao recolhimento efetivo.',
+          'Pilotos estão previstos ao longo da transição; clientes com alto volume de cartão (varejo) devem ser priorizados na preparação.'
+        ]},
+        { title: 'Cesta básica nacional — alíquota zero', sub: 'Nota interna · regimes favorecidos', tags: ['Conceito'], meta: 'Atualizado em 15 jun 2026 · Juliana Prado', paras: [
+          'A LC 214/2025 define a cesta básica nacional com alíquota zero de CBS e IBS, e uma lista complementar com redução de 60%.',
+          'Para os clientes de varejo alimentar, o enquadramento correto por NCM é decisivo: itens fora da lista tributam integralmente.',
+          'Ação na carteira: revisar o cadastro de produtos do Supermercado Andrade e do Café Serrano contra as listas dos Anexos I e VII.'
+        ]}
+      ],
+      flows: [
+        { id: 'f1', name: 'Fluxo de apuração — CBS / IBS / IS', nodes: [
+          { id: 'n1', x: 40, y: 60, title: 'Emissão da NF-e', desc: 'Destaque de CBS 0,9% + IBS 0,1% com cClassTrib correto', color: '#4653d6' },
+          { id: 'n2', x: 320, y: 60, title: 'Validação cadastral', desc: 'De-para NCM → CST → cClassTrib; rejeições SEFAZ', color: '#4653d6' },
+          { id: 'n3', x: 600, y: 60, title: 'Apuração assistida', desc: 'Pré-apuração RFB / CG-IBS a partir dos documentos fiscais', color: '#0e7a6f' },
+          { id: 'n4', x: 880, y: 20, title: 'Split payment', desc: 'Segregação do tributo na liquidação financeira', color: '#b3512e' },
+          { id: 'n5', x: 880, y: 170, title: 'Compensação de créditos', desc: 'Créditos de CBS/IBS condicionados ao recolhimento efetivo', color: '#0e7a6f' },
+          { id: 'n6', x: 1160, y: 170, title: 'Recolhimento do saldo', desc: 'Saldo devedor após compensações, por competência', color: '#b3512e' },
+          { id: 'n7', x: 1160, y: 20, title: 'Distribuição da receita', desc: 'CG-IBS reparte o IBS entre estados e municípios', color: '#5b5f6b' }
+        ], edges: [ ['n1', 'n2'], ['n2', 'n3'], ['n3', 'n4'], ['n3', 'n5'], ['n5', 'n6'], ['n4', 'n7'], ['n6', 'n7'] ] },
+        { id: 'f2', name: 'Onboarding de novo cliente', nodes: [
+          { id: 'a1', x: 40, y: 60, title: 'Coletar documentos', desc: 'CNPJ, contrato social, certificado digital', color: '#4653d6' },
+          { id: 'a2', x: 320, y: 60, title: 'Cadastrar no ERP', desc: 'Regime tributário, CNAEs e responsável', color: '#0e7a6f' },
+          { id: 'a3', x: 600, y: 60, title: 'Checklist de adequação', desc: 'Rodar checklist de adequação à reforma', color: '#b3512e' }
+        ], edges: [['a1', 'a2'], ['a2', 'a3']] },
+        { id: 'f3', name: 'Checklist mensal de obrigações acessórias', nodes: [
+          { id: 'b1', x: 40, y: 60, title: 'Fechar movimento do mês', desc: 'Conciliar notas e apurar impostos', color: '#4653d6' },
+          { id: 'b2', x: 320, y: 60, title: 'Transmitir declarações', desc: 'EFD, DCTFWeb, DAS conforme regime', color: '#b3512e' }
+        ], edges: [['b1', 'b2']] }
+      ],
+      flowView: 'list', activeFlowId: null,
+      pan: { x: 30, y: 40 }, zoom: 1, drag: null, panning: null, connect: null, selId: null
+    };
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { saved = null; }
+    this.state = saved && typeof saved === 'object'
+      ? { ...defaults, ...saved, drag: null, panning: null, connect: null }
+      : defaults;
+    this.canvasRef = React.createRef();
+    this.NW = 220; this.NH = 78;
+    this._persistT = null;
+  }
+  componentDidUpdate() {
+    clearTimeout(this._persistT);
+    this._persistT = setTimeout(() => {
+      const { drag, panning, connect, ...rest } = this.state;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rest)); } catch (e) {}
+    }, 400);
+  }
+  st(fn) { this.setState(fn); }
+  cvPoint(e) {
+    const r = this.canvasRef.current.getBoundingClientRect();
+    const { pan, zoom } = this.state;
+    return { x: (e.clientX - r.left - pan.x) / zoom, y: (e.clientY - r.top - pan.y) / zoom };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const accent = ACCENT;
+    const tabs = { dash: 'Visão geral', tasks: 'Tarefas', cal: 'Prazos', flow: 'Fluxos', cli: 'Clientes', team: 'Equipe', ibs: 'IBS e CBS', kb: 'Base de conhecimento' };
+    const chevron = (color) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' stroke='${color}' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>`)}")`;
+    const selStyle = (bg, fg, border, radius) => `appearance:none;-webkit-appearance:none;-moz-appearance:none;background-color:${bg};background-image:${chevron(fg)};background-repeat:no-repeat;background-position:right 11px center;background-size:9px 6px;padding:8px 32px 8px 13px;border-radius:${radius || 9}px;border:1.5px solid ${border};color:${fg};font-weight:700;font-size:12px;cursor:pointer;outline:none`;
+    const selCategory = selStyle('#f5f0ff', '#7c3aed', '#e4d9fb');
+    const selRegime = selStyle('#eef6f2', '#0e7a6f', '#d3ecdf');
+    const selRec = selStyle('#eef1ff', accent, '#d9deff');
+    const selFlowLink = selStyle('#fdf3e6', '#b5750f', '#f5e4c8');
+    const selPill = selStyle('#f4f4f2', '#4b4e58', '#e2e2de', 99);
+    const selPermissao = selStyle('#eef1ff', accent, '#d9deff', 10);
+
+    // ---- dates (real clock) ----
+    const now = new Date();
+    const todayISO = isoDate(now);
+    const wk = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][now.getDay()];
+    const mo = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][now.getMonth()];
+    const headerDate = `${wk}, ${String(now.getDate()).padStart(2, '0')} ${mo} ${now.getFullYear()}`;
+    const yr = now.getFullYear();
+    const yearStart = new Date(yr, 0, 1), yearEnd = new Date(yr + 1, 0, 1);
+    const yearPct = Math.round((now - yearStart) / (yearEnd - yearStart) * 100);
+    const phaseNow =
+      yr <= 2026 ? { title: `${yr} — Ano-teste`, desc: 'CBS 0,9% + IBS 0,1% em destaque na NF-e' } :
+      yr === 2027 ? { title: '2027 — CBS integral', desc: 'PIS/Cofins extintos; Imposto Seletivo em vigor' } :
+      yr === 2028 ? { title: '2028 — Consolidação', desc: 'CBS e IS plenos; IBS em alíquota de teste' } :
+      yr <= 2032 ? { title: `${yr} — Transição IBS`, desc: 'ICMS e ISS reduzidos gradualmente; IBS sobe' } :
+      { title: `${yr} — Regime pleno`, desc: 'IVA dual em vigência integral' };
+
+    // ---- auth ----
+    const brandName = s.officeName || 'Reforma 2033';
+    const doLogin = () => { if (!s.loginEmail.trim() || !s.loginPassword.trim()) { this.st(() => ({ loginError: 'Informe e-mail e senha.' })); return; } this.st(() => ({ authView: 'app', loginError: '', loginPassword: '' })); };
+    const doSignup = () => {
+      if (!s.signupOfficeName.trim() || !s.signupEmail.trim() || !s.signupPassword.trim()) { this.st(() => ({ signupError: 'Preencha os campos obrigatórios.' })); return; }
+      if (s.signupPassword !== s.signupConfirm) { this.st(() => ({ signupError: 'As senhas não coincidem.' })); return; }
+      this.st(() => ({ authView: 'app', officeName: s.signupOfficeName.trim(), signupError: '', signupPassword: '', signupConfirm: '' }));
+    };
+    const logout = () => this.st(() => ({ authView: 'login', loginEmail: '', loginPassword: '', loginError: '' }));
+    const mkTab = (id) => ({
+      go: () => this.st(() => ({ tab: id })),
+      style: `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;color:${s.tab === id ? accent : '#4b4e58'};background:${s.tab === id ? '#eef1ff' : 'transparent'}`
+    });
+    const byId = Object.fromEntries(s.team.map(p => [p.id, p]));
+    const av = (p, size) => `width:${size}px;height:${size}px;flex:none;border-radius:99px;background:${p.color};color:#fff;display:grid;place-items:center;font-size:${size * .38}px;font-weight:700`;
+    const tipoColor = { acessoria: '#4653d6', pagamento: '#0e7a6f', reforma: '#b3512e', interno: '#8a8d98' };
+    const tipoLabel = { acessoria: 'Acessória', pagamento: 'Pagamento', reforma: 'Reforma', interno: 'Interno' };
+
+    // ---- tasks by client ----
+    const clientById = Object.fromEntries(s.clients.map(c => [c.id, c]));
+    const progColor = (p) => p >= 100 ? '#0e7a6f' : p >= 50 ? accent : p >= 1 ? '#c98a2e' : '#c2c3c9';
+    const statusLabel = (p) => p >= 100 ? 'Concluída' : p === 0 ? 'Não iniciada' : 'Em andamento';
+    const statusStyle = (p) => `font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;color:#fff;background:${progColor(p)}`;
+    const catMeta = {
+      Fiscal: { bg: '#eef1ff', fg: accent }, Sistemas: { bg: '#f1eafe', fg: '#7c3aed' },
+      Contratual: { bg: '#fdf3e6', fg: '#b5750f' }, Compliance: { bg: '#e8f5ec', fg: '#1f9254' }, Treinamento: { bg: '#fdecea', fg: '#c0392b' }
+    };
+    const categoryOptions = Object.keys(catMeta);
+    const pctOf = (task, link) => task.subtasks.length ? Math.round(link.done.length / task.subtasks.length * 100) : 0;
+    const filt = s.taskFilter;
+    const clientOptions = s.clients.map(c => ({ id: c.id, name: c.name }));
+    const openTask = (taskId, clientId) => this.st(() => ({ view: 'detail', detailTaskId: taskId, detailActiveClient: clientId || null, addingLinkDetail: false, detailSubtaskInput: '', commentDraft: '' }));
+    const visTasks = s.tasks.filter(t => (filt === 'all' || t.people.includes(filt)) && (s.clientFilter === 'all' || t.links.some(l => l.clientId === s.clientFilter)));
+    const taskCards = visTasks.map(t => {
+      const cm = catMeta[t.category] || catMeta.Fiscal;
+      const linksShown = s.clientFilter === 'all' ? t.links : t.links.filter(l => l.clientId === s.clientFilter);
+      const pcts = t.links.map(l => pctOf(t, l));
+      const avgPct = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : null;
+      return { id: t.id, title: t.title, category: t.category, rec: t.rec, recLabel: t.recLabel,
+        catBadge: `font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:${cm.bg};color:${cm.fg}`,
+        recBadgeStyle: `font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:#eef1ff;color:${accent};font-family:'JetBrains Mono',monospace`,
+        dateStyle: `font-size:11px;color:#8a8d98;font-family:'JetBrains Mono',monospace`,
+        dateRange: toBRshort(t.startDate) + ' → ' + toBRshort(t.dueDate),
+        peopleAv: t.people.map((pid, i) => { const p = byId[pid]; return p ? { ini: p.ini, name: p.name, style: av(p, 22) + (i ? ';margin-left:-8px;border:2px solid #fff' : ';border:2px solid #fff') } : null; }).filter(Boolean),
+        subtaskCountLabel: t.subtasks.length + ' subtarefas',
+        avgLabel: avgPct === null ? 'Sem clientes' : avgPct + '% em média',
+        avgStyle: `font-size:11px;font-weight:600;color:${avgPct === null ? '#a0a3ad' : progColor(avgPct)}`,
+        onDelTask: (e) => { e.stopPropagation(); this.st(st => ({ tasks: st.tasks.filter(x => x.id !== t.id) })); },
+        onOpen: () => openTask(t.id, t.links.length ? t.links[0].clientId : null),
+        noLinks: linksShown.length === 0,
+        links: linksShown.map(l => {
+          const c = clientById[l.clientId]; if (!c) return null; const pct = pctOf(t, l);
+          return { clientId: l.clientId, name: c.name, ini: c.ini, avStyle: `width:20px;height:20px;flex:none;border-radius:99px;background:${c.color};color:#fff;display:grid;place-items:center;font-size:9px;font-weight:700`,
+            pct, barStyle: `width:${pct}%;height:100%;border-radius:99px;background:${progColor(pct)}`, statusLabel: statusLabel(pct), statusStyle: statusStyle(pct),
+            onOpen: (e) => { e.stopPropagation(); openTask(t.id, l.clientId); } };
+        }).filter(Boolean) };
+    });
+    const taskFilters = [{ id: 'all', label: 'Todos' }, ...s.team.map(p => ({ id: p.id, label: p.name.split(' ')[0] }))].map(f => ({
+      ...f, go: () => this.st(() => ({ taskFilter: f.id })),
+      style: `font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;cursor:pointer;border:1px solid ${filt === f.id ? accent : '#e2e2de'};color:${filt === f.id ? '#fff' : '#4b4e58'};background:${filt === f.id ? accent : '#fff'}`
+    }));
+    const newTaskPeopleOptions = s.team.map(p => { const picked = s.newTaskPeople.includes(p.id);
+      return { id: p.id, name: p.name.split(' ')[0], toggle: () => this.st(st => ({ newTaskPeople: picked ? st.newTaskPeople.filter(id => id !== p.id) : [...st.newTaskPeople, p.id] })),
+        style: `font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;cursor:pointer;border:1px solid ${picked ? accent : '#e2e2de'};color:${picked ? '#fff' : '#4b4e58'};background:${picked ? accent : '#fff'}` }; });
+    const newTaskSubtasksList = s.newTaskSubtasks.map(st2 => ({ id: st2.id, title: st2.title, onRemove: () => this.st(st => ({ newTaskSubtasks: st.newTaskSubtasks.filter(x => x.id !== st2.id) })) }));
+    const newTaskClientChips = s.newTaskClients.map(cid => { const c = clientById[cid];
+      return c ? { id: cid, name: c.name, onRemove: () => this.st(st => ({ newTaskClients: st.newTaskClients.filter(id => id !== cid) })) } : null; }).filter(Boolean);
+    const nq = s.newTaskClientSearch.trim().toLowerCase();
+    const newTaskClientList = s.clients.filter(c => !nq || c.name.toLowerCase().includes(nq)).map(c => { const picked = s.newTaskClients.includes(c.id);
+      return { id: c.id, name: c.name, picked,
+        toggle: () => this.st(st => ({ newTaskClients: picked ? st.newTaskClients.filter(id => id !== c.id) : [...st.newTaskClients, c.id] })),
+        rowStyle: `display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;cursor:pointer;background:${picked ? '#eef1ff' : 'transparent'}`,
+        boxStyle: `width:16px;height:16px;flex:none;border-radius:4px;border:1.5px solid ${picked ? accent : '#d8d8d4'};background:${picked ? accent : '#fff'};display:grid;place-items:center` }; });
+
+    // ---- task detail ----
+    let detail = null, detailLinks = [], detailSubtasks = [], detailComments = [], detailPeopleOptions = [], detailAvailableClients = [];
+    const dTask = s.tasks.find(x => x.id === s.detailTaskId);
+    if (dTask) {
+      const cm = catMeta[dTask.category] || catMeta.Fiscal;
+      const activeClientId = (s.detailActiveClient && dTask.links.some(l => l.clientId === s.detailActiveClient)) ? s.detailActiveClient : (dTask.links[0] ? dTask.links[0].clientId : null);
+      const activeLink = dTask.links.find(l => l.clientId === activeClientId);
+      const activeClient = activeClientId ? clientById[activeClientId] : null;
+      const setField = (field) => (e) => { const v = e.target.value; this.st(st => ({ tasks: st.tasks.map(x => x.id === dTask.id ? { ...x, [field]: v } : x) })); };
+      detail = {
+        title: dTask.title, description: dTask.description || '', category: dTask.category,
+        catBadge: `font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;background:${cm.bg};color:${cm.fg}`,
+        rec: dTask.rec, recLabel: dTask.recLabel || 'mensal',
+        recSwitch: `width:34px;height:19px;border-radius:99px;cursor:pointer;background:${dTask.rec ? accent : '#d8d8d4'};position:relative;transition:background .15s`,
+        recKnob: `width:15px;height:15px;border-radius:99px;background:#fff;position:absolute;top:2px;left:${dTask.rec ? 17 : 2}px;transition:left .15s`,
+        startDate: dTask.startDate, dueDate: dTask.dueDate,
+        activeClientName: activeClient ? activeClient.name : null,
+        activePct: activeLink ? pctOf(dTask, activeLink) : 0,
+        onTitleChange: setField('title'), onDescChange: setField('description'),
+        onCategoryChange: setField('category'), onStartChange: setField('startDate'), onDueChange: setField('dueDate'),
+        onRecLabelChange: setField('recLabel'),
+        toggleRec: () => this.st(st => ({ tasks: st.tasks.map(x => x.id === dTask.id ? { ...x, rec: !x.rec } : x) })),
+        onDelete: () => this.st(st => ({ view: 'list', detailTaskId: null, tasks: st.tasks.filter(x => x.id !== dTask.id) })),
+        flowId: dTask.flowId || '', onFlowIdChange: setField('flowId'),
+        flowName: dTask.flowId ? (s.flows.find(f => f.id === dTask.flowId) || {}).name : null,
+        onOpenFlow: () => this.st(() => ({ tab: 'flow', flowView: 'canvas', activeFlowId: dTask.flowId, selId: null, connect: null, pan: { x: 30, y: 40 }, zoom: 1 }))
+      };
+      detailPeopleOptions = s.team.map(p => { const picked = dTask.people.includes(p.id);
+        return { id: p.id, name: p.name.split(' ')[0], toggle: () => this.st(st => ({ tasks: st.tasks.map(x => x.id !== dTask.id ? x : { ...x, people: picked ? x.people.filter(id => id !== p.id) : [...x.people, p.id] }) })),
+          style: `font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;cursor:pointer;border:1px solid ${picked ? accent : '#e2e2de'};color:${picked ? '#fff' : '#4b4e58'};background:${picked ? accent : '#fff'}` }; });
+      detailLinks = dTask.links.map(l => {
+        const c = clientById[l.clientId]; if (!c) return null; const pct = pctOf(dTask, l); const active = l.clientId === activeClientId;
+        return { clientId: l.clientId, name: c.name, ini: c.ini, avStyle: `width:22px;height:22px;flex:none;border-radius:99px;background:${c.color};color:#fff;display:grid;place-items:center;font-size:9.5px;font-weight:700`,
+          pct, rowStyle: `display:flex;align-items:center;gap:10px;cursor:pointer;padding:7px 8px;border-radius:8px;border:1.5px solid ${active ? accent : 'transparent'};background:${active ? '#f7f8ff' : 'transparent'}`,
+          onSelect: () => this.st(() => ({ detailActiveClient: l.clientId })),
+          onRemove: (e) => { e.stopPropagation();
+            this.st(st => ({ tasks: st.tasks.map(x => x.id !== dTask.id ? x : { ...x, links: x.links.filter(ll => ll.clientId !== l.clientId) }), detailActiveClient: st.detailActiveClient === l.clientId ? null : st.detailActiveClient })); } };
+      }).filter(Boolean);
+      const dq = s.detailClientSearch.trim().toLowerCase();
+      detailAvailableClients = s.clients.filter(c => !dTask.links.some(l => l.clientId === c.id)).filter(c => !dq || c.name.toLowerCase().includes(dq)).map(c => ({ id: c.id, name: c.name,
+        onPick: () => this.st(st => ({ detailActiveClient: c.id, tasks: st.tasks.map(x => x.id === dTask.id ? { ...x, links: [...x.links, { clientId: c.id, done: [] }] } : x) })) }));
+      detailSubtasks = dTask.subtasks.map(sub => {
+        const done = activeLink ? activeLink.done.includes(sub.id) : false;
+        return { id: sub.id, title: sub.title, done,
+          boxStyle: `width:18px;height:18px;flex:none;border-radius:5px;display:grid;place-items:center;background:${done ? progColor(100) : '#fff'};border:1.5px solid ${done ? progColor(100) : '#d8d8d4'};opacity:${activeClient ? 1 : .5}`,
+          textStyle: `font-size:12.5px;flex:1;color:${done ? '#a0a3ad' : '#33363f'};text-decoration:${done ? 'line-through' : 'none'}`,
+          toggle: () => { if (!activeClientId) return; this.st(st => ({ tasks: st.tasks.map(x => x.id !== dTask.id ? x : { ...x, links: x.links.map(ll => ll.clientId !== activeClientId ? ll : { ...ll, done: ll.done.includes(sub.id) ? ll.done.filter(d => d !== sub.id) : [...ll.done, sub.id] }) }) })); },
+          onRemove: () => this.st(st => ({ tasks: st.tasks.map(x => x.id !== dTask.id ? x : { ...x, subtasks: x.subtasks.filter(s2 => s2.id !== sub.id), links: x.links.map(ll => ({ ...ll, done: ll.done.filter(d => d !== sub.id) })) }) })) };
+      });
+      detailComments = (dTask.comments || []).map(cm2 => { const p = byId[cm2.author] || { name: 'Equipe', ini: '?', color: '#8a8d98' };
+        return { id: cm2.id, text: cm2.text, time: cm2.time, name: p.name, ini: p.ini, avStyle: av(p, 26) }; });
+    }
+
+    // ---- dashboard (computed from live data) ----
+    const taskAvgPct = (t) => { const ps = t.links.map(l => pctOf(t, l)); return ps.length ? Math.round(ps.reduce((a, b) => a + b, 0) / ps.length) : null; };
+    const isTaskDone = (t) => { const p = taskAvgPct(t); return p !== null && p >= 100; };
+    const openTasksArr = s.tasks.filter(t => !isTaskDone(t));
+    const lateTasks = openTasksArr.filter(t => t.dueDate && t.dueDate < todayISO);
+    const attnClients = s.clients.filter(c => c.status !== 'Em dia').length;
+    const in7d = new Date(now); in7d.setDate(in7d.getDate() + 7);
+    const in7ISO = isoDate(in7d);
+    const next7 = s.events.filter(ev => ev.date >= todayISO && ev.date <= in7ISO);
+    const avgAdeq = s.clients.length ? Math.round(s.clients.reduce((a, c) => a + c.pct, 0) / s.clients.length) : 0;
+    const kpis = [
+      { label: 'Clientes em adequação', value: String(s.clients.length), suffix: 'ativos', delta: attnClients + ' em situação crítica ou atenção', dc: attnClients ? '#b3512e' : '#0e7a6f' },
+      { label: 'Tarefas abertas', value: String(openTasksArr.length), suffix: 'de ' + s.tasks.length, delta: lateTasks.length + ' em atraso', dc: lateTasks.length ? '#b3402e' : '#0e7a6f' },
+      { label: 'Prazos nos próximos 7 dias', value: String(next7.length), suffix: next7.length ? 'até ' + toBRshort(in7ISO) : '', delta: next7.length ? next7.slice(0, 3).map(e => e.title.split(' — ')[0]).join(', ') : 'Nenhum prazo na janela', dc: '#6b6e78' },
+      { label: 'Adequação média da carteira', value: avgAdeq + '%', suffix: '', delta: 'média de ' + s.clients.length + ' clientes', dc: '#0e7a6f' }
+    ].map(k => ({ ...k, deltaStyle: `font-size:11px;font-weight:600;margin-top:6px;color:${k.dc}` }));
+    const phases = [
+      { year: '2026', title: 'Ano-teste', desc: 'CBS 0,9% + IBS 0,1% destacados na NF-e; recolhimento dispensado', from: 2020, to: 2026 },
+      { year: '2027', title: 'CBS integral', desc: 'Extinção de PIS/Cofins; Imposto Seletivo em vigor; IPI zerado (exceto ZFM)', from: 2027, to: 2027 },
+      { year: '2028', title: 'Consolidação', desc: 'CBS e IS plenos; IBS mantém alíquota de teste', from: 2028, to: 2028 },
+      { year: '2029–32', title: 'Transição IBS', desc: 'ICMS e ISS reduzidos gradualmente; IBS sobe na mesma proporção', from: 2029, to: 2032 },
+      { year: '2033', title: 'Regime pleno', desc: 'Extinção de ICMS e ISS; IVA dual em vigência integral', from: 2033, to: 2077 },
+      { year: '2078', title: 'Fim da compensação', desc: 'Encerramento dos ajustes federativos de receita', from: 2078, to: 9999, dim: true }
+    ].map(ph => { const on = yr >= ph.from && yr <= ph.to; return { ...ph,
+      style: `border:1px solid ${on ? accent : '#ececea'};background:${on ? '#f7f8ff' : '#fafaf8'};border-radius:10px;padding:12px;opacity:${ph.dim ? .55 : 1}`,
+      yearStyle: `display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;color:${on ? '#fff' : '#5b5f6b'};background:${on ? accent : '#ececea'}` }; });
+    const upcoming = s.events.filter(ev => ev.date >= todayISO).slice(0, 6).map((ev, i) => ({ ...ev, key: i,
+      dateLabel: toBRshort(ev.date),
+      dateStyle: `font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#5b5f6b;width:44px`,
+      dot: `width:8px;height:8px;flex:none;border-radius:99px;background:${tipoColor[ev.tipo]}`,
+      tipoLabel: tipoLabel[ev.tipo],
+      badge: `font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;background:#f4f4f2;color:#6b6e78` }));
+    const openByResp = s.team.map(p => ({ p, count: openTasksArr.filter(t => t.people.includes(p.id)).length }));
+    const maxLoad = Math.max(...openByResp.map(o => o.count), 1);
+    const load = openByResp.map(({ p, count }) => ({ id: p.id, ini: p.ini, name: p.name, count, avStyle: av(p, 22),
+      barStyle: `width:${Math.round(count / maxLoad * 100)}%;height:100%;background:${p.color};border-radius:99px` }));
+    const lateBox = lateTasks.length ? {
+      title: lateTasks.length + (lateTasks.length === 1 ? ' tarefa em atraso' : ' tarefas em atraso'),
+      text: lateTasks.slice(0, 3).map(t => t.title).join(' · ') + (lateTasks.length > 3 ? ' e mais…' : '')
+    } : null;
+
+    // ---- mudanças (Prazos em cards) ----
+    const sevMap = {
+      informativo: { label: 'Informativo', dot: '#8a8d98', tagBg: '#ececea', tagFg: '#5b5f6b' },
+      critico: { label: 'Crítico', dot: '#d64545', tagBg: '#fdecea', tagFg: '#c0392b' },
+      importante: { label: 'Importante', dot: '#c98a2e', tagBg: '#fdf3e6', tagFg: '#b5750f' }
+    };
+    const badgeMap = { SISTEMAS: { bg: '#f1eafe', fg: '#7c3aed' }, NFS: { bg: '#e8f5ec', fg: '#1f9254' } };
+    const buildCard = (c) => {
+      const sv = sevMap[c.severity] || sevMap.informativo;
+      const bd = c.badge ? (badgeMap[c.badge] || { bg: '#f4f4f2', fg: '#6b6e78' }) : null;
+      return { ...c,
+        dot: `width:8px;height:8px;border-radius:99px;background:${sv.dot}`,
+        sevTag: `font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:${sv.tagBg};color:${sv.tagFg}`,
+        sevLabel: sv.label, notEditing: !c.editing, hasDesc: !!c.desc && !c.editing, hasBadge: !!c.badge,
+        badgeStyle: bd ? `margin-left:auto;flex:none;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:${bd.bg};color:${bd.fg}` : '',
+        titleVal: c.title,
+        onTitleChange: (e) => { const v = e.target.value; this.st(st => ({ chgs: st.chgs.map(x => x.id === c.id ? { ...x, title: v } : x) })); },
+        onTitleKey: (e) => {
+          if (e.key === 'Enter') this.st(st => ({ chgs: st.chgs.map(x => x.id === c.id ? { ...x, editing: false, title: (x.title || '').trim() || 'Nova mudança' } : x) }));
+          if (e.key === 'Escape') this.st(st => ({ chgs: st.chgs.filter(x => x.id !== c.id) }));
+        },
+        onDel: () => this.st(st => ({ chgs: st.chgs.filter(x => x.id !== c.id) })) };
+    };
+    const monthKeys = [...new Set(s.chgs.map(c => c.month))].sort();
+    const monthGroups = monthKeys.map(mk => {
+      const [yy, mmn] = mk.split('-').map(Number);
+      const label = new Date(yy, mmn - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      return { key: mk, label, cards: s.chgs.filter(c => c.month === mk).map(buildCard),
+        onAdd: () => this.st(st => ({ chgs: [...st.chgs, { id: Date.now(), month: mk, severity: 'informativo', title: '', desc: '', date: toBRfull(todayISO), badge: '', editing: true }] })),
+        onDelGroup: () => this.st(st => ({ chgs: st.chgs.filter(c => c.month !== mk) })) };
+    });
+
+    // ---- clients ----
+    const regimes = ['Todos', 'Lucro Real', 'Lucro Presumido', 'Simples Nacional'];
+    const cliFilters = regimes.map(r => ({ label: r, go: () => this.st(() => ({ cliFilter: r })),
+      style: `font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;cursor:pointer;border:1px solid ${s.cliFilter === r ? accent : '#e2e2de'};color:${s.cliFilter === r ? '#fff' : '#4b4e58'};background:${s.cliFilter === r ? accent : '#fff'}` }));
+    const stColor = { 'Em dia': ['#e8f5f0', '#0e7a6f'], 'Atenção': ['#fdf6ef', '#9a5b1f'], 'Crítico': ['#fdf2f0', '#b3402e'] };
+    const clients = s.clients.filter(c => s.cliFilter === 'Todos' || c.regime === s.cliFilter).map(c => {
+      const p = byId[c.resp] || s.team[0];
+      return { ...c, respIni: p.ini, respName: p.name.split(' ')[0], avStyle: av(p, 22),
+        barStyle: `width:${c.pct}%;height:100%;border-radius:99px;background:${c.pct < 35 ? '#b3402e' : c.pct < 60 ? '#c98a2e' : '#0e7a6f'}`,
+        badge: `font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;text-align:center;background:${(stColor[c.status] || stColor['Em dia'])[0]};color:${(stColor[c.status] || stColor['Em dia'])[1]}`,
+        onOpen: () => this.st(() => ({ clientView: 'detail', clientDetailId: c.id })) };
+    });
+
+    // ---- client detail ----
+    let clientDetail = null, clientDetailTasks = [];
+    const dClient = s.clients.find(c => c.id === s.clientDetailId);
+    if (dClient) {
+      const p = byId[dClient.resp] || s.team[0];
+      clientDetailTasks = s.tasks.filter(t => t.links.some(l => l.clientId === dClient.id)).map(t => {
+        const link = t.links.find(l => l.clientId === dClient.id); const pct = pctOf(t, link);
+        const cm = catMeta[t.category] || catMeta.Fiscal;
+        return { id: t.id, title: t.title, category: t.category, pct,
+          catBadge: `font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:${cm.bg};color:${cm.fg}`,
+          barStyle: `width:${pct}%;height:100%;border-radius:99px;background:${progColor(pct)}`,
+          statusLabel: statusLabel(pct), statusStyle: statusStyle(pct),
+          onOpen: () => this.st(() => ({ tab: 'tasks', view: 'detail', detailTaskId: t.id, detailActiveClient: dClient.id })) };
+      });
+      clientDetail = { name: dClient.name, setor: dClient.setor, regime: dClient.regime, ini: dClient.ini, pct: dClient.pct, status: dClient.status,
+        avStyle: `width:46px;height:46px;flex:none;border-radius:99px;background:${dClient.color};color:#fff;display:grid;place-items:center;font-size:17px;font-weight:700`,
+        badge: `font-size:11px;font-weight:700;padding:4px 11px;border-radius:99px;text-align:center;background:${(stColor[dClient.status] || stColor['Em dia'])[0]};color:${(stColor[dClient.status] || stColor['Em dia'])[1]}`,
+        respName: p.name, respAv: av(p, 22), respIni: p.ini,
+        taskCount: clientDetailTasks.length, noTasks: clientDetailTasks.length === 0,
+        openCount: clientDetailTasks.filter(t => t.pct < 100).length, doneCount: clientDetailTasks.filter(t => t.pct >= 100).length };
+    }
+
+    // ---- add client ----
+    const palette = ['#4653d6', '#0e7a6f', '#b3512e', '#5b5f6b', '#8a4fd3', '#1d6fb8', '#c9435a', '#2f8f6f'];
+    const iniOf = (name) => (name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??');
+    const addClientsBulk = (rows) => this.st(st => ({ clients: [...st.clients, ...rows.map((r, i) => ({ id: 'c' + Date.now() + i, ini: iniOf(r.name), color: palette[(st.clients.length + i) % palette.length], name: r.name, setor: r.setor || 'Não informado', regime: r.regime || 'Simples Nacional', resp: st.team[0] ? st.team[0].id : 'mc', pct: 0, status: 'Em dia' }))] }));
+    const parseRows = (text) => text.split('\n').map(l => l.trim()).filter(Boolean)
+      .map(l => l.split(',').map(c => c.trim()))
+      .filter(cols => cols[0] && !/^nome$/i.test(cols[0]))
+      .map(cols => ({ name: cols[0], setor: cols[1] || '', regime: cols[2] || '' }));
+    const batchRows = parseRows(s.batchText);
+
+    // ---- team ----
+    const permBadgeStyle = (perm) => `align-self:flex-start;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:${perm === 'Admin' ? '#eef1ff' : '#f4f4f2'};color:${perm === 'Admin' ? accent : '#6b6e78'}`;
+    const teamList = s.team.map(m => {
+      const inUse = s.tasks.some(t => t.people.includes(m.id)) || s.clients.some(c => c.resp === m.id);
+      return { ...m, avStyle: av(m, 34), permBadge: permBadgeStyle(m.permissao || 'Membro'),
+        canRemove: !inUse && s.team.length > 1, locked: inUse,
+        onRemove: () => this.st(st => ({ team: st.team.filter(x => x.id !== m.id) })) };
+    });
+    const memberColorSwatches = palette.map(c => ({ color: c, pick: () => this.st(() => ({ newMemberColor: c })),
+      style: `width:22px;height:22px;border-radius:7px;cursor:pointer;background:${c};border:2px solid ${s.newMemberColor === c ? '#1c1e26' : 'transparent'}` }));
+
+    // ---- IBS/CBS ----
+    const ibsSub = s.ibsSubTab;
+    const ibsAddType = s.ibsAddType;
+    const addPillStyle = (active) => `font-size:12.5px;font-weight:600;padding:8px 16px;border-radius:8px;cursor:pointer;color:${active ? '#fff' : '#4b4e58'};background:${active ? accent : '#fff'};border:1px solid ${active ? accent : '#e2e2de'}`;
+    const parseIbsCodeRows = (text) => text.split('\n').map(l => l.trim()).filter(Boolean)
+      .map(l => l.split(',').map(c => c.trim())).filter(cols => cols[0]).map(cols => ({ code: cols[0], desc: cols[1] || '' }));
+    const parseIbsProdRows = (text) => text.split('\n').map(l => l.trim()).filter(Boolean)
+      .map(l => l.split(',').map(c => c.trim())).filter(cols => cols[0])
+      .map(cols => ({ ncm: cols[0], desc: cols[1] || '', cst: cols[2] || '', cclass: cols[3] || '', aliqIbs: cols[4] || '', aliqCbs: cols[5] || '', redIbs: cols[6] || '', redCbs: cols[7] || '' }));
+    const ibsBatchRows = ibsAddType === 'produto' ? parseIbsProdRows(s.ibsBatchText) : parseIbsCodeRows(s.ibsBatchText);
+
+    // ---- knowledge base ----
+    const note = s.notes[Math.min(s.selNote, s.notes.length - 1)] || { title: '', meta: '', tags: [], paras: [] };
+    const notes = s.notes.map((nt, i) => ({ ...nt, key: i, onSel: () => this.st(() => ({ selNote: i })),
+      rowStyle: `padding:10px 12px;border-radius:9px;cursor:pointer;${i === s.selNote ? `background:#eef1ff;box-shadow:inset 2.5px 0 0 ${accent}` : ''}` }));
+
+    // ---- flows ----
+    const flowList = s.flows.map(f => ({ id: f.id, name: f.name, nodeCount: f.nodes.length + (f.nodes.length === 1 ? ' nó' : ' nós'),
+      onOpen: () => this.st(() => ({ flowView: 'canvas', activeFlowId: f.id, selId: null, connect: null, pan: { x: 30, y: 40 }, zoom: 1 })),
+      onDelete: (e) => { e.stopPropagation(); this.st(st => ({ flows: st.flows.filter(x => x.id !== f.id) })); } }));
+    const goFlowList = () => this.st(() => ({ flowView: 'list', activeFlowId: null, selId: null, connect: null }));
+    const createFlow = () => { const id = 'f' + Date.now(); this.st(st => ({ flows: [...st.flows, { id, name: 'Novo fluxo', nodes: [], edges: [] }], flowView: 'canvas', activeFlowId: id, selId: null, pan: { x: 30, y: 40 }, zoom: 1 })); };
+    const onFlowNameChange = (e) => { const v = e.target.value; this.st(st => ({ flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, name: v } : f) })); };
+    const activeFlow = s.flows.find(f => f.id === s.activeFlowId) || null;
+
+    const NW = this.NW, NH = this.NH;
+    let edges = [], nodes = [], pendingD = '', sel = null, nodeColors = [];
+    if (activeFlow) {
+      const pos = Object.fromEntries(activeFlow.nodes.map(n => [n.id, n]));
+      edges = activeFlow.edges.map(([a, b], i) => {
+        const A = pos[a], B = pos[b]; if (!A || !B) return null;
+        const fx = A.x + NW, fy = A.y + NH / 2, tx = B.x, ty = B.y + NH / 2;
+        return { key: i, d: `M ${fx} ${fy} C ${fx + 60} ${fy}, ${tx - 60} ${ty}, ${tx} ${ty}`,
+          onDel: () => this.st(st => ({ flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, edges: f.edges.filter((_, k) => k !== i) } : f) })) };
+      }).filter(Boolean);
+      nodes = activeFlow.nodes.map(n => ({ ...n,
+        style: `position:absolute;left:${n.x}px;top:${n.y}px;width:${NW}px;min-height:${NH}px;background:#fff;border:1.5px solid ${s.selId === n.id ? accent : '#e2e2de'};border-radius:11px;padding:10px 12px;cursor:grab;box-shadow:${s.selId === n.id ? '0 6px 18px rgba(70,83,214,.18)' : '0 2px 6px rgba(20,20,30,.06)'};user-select:none`,
+        dot: `width:9px;height:9px;flex:none;border-radius:3px;background:${n.color}`,
+        portStyle: `position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:13px;height:13px;border-radius:99px;background:${accent};border:2.5px solid #fff;cursor:crosshair;box-shadow:0 1px 3px rgba(20,20,30,.25);transition:transform .12s`,
+        onDown: (e) => { e.stopPropagation(); const pt = this.cvPoint(e); this.st(() => ({ drag: { id: n.id, dx: pt.x - n.x, dy: pt.y - n.y }, selId: n.id })); },
+        onUp: (e) => { if (s.connect && s.connect.from !== n.id) { e.stopPropagation(); this.st(st => ({ connect: null, flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, edges: f.edges.some(([a, b]) => a === st.connect.from && b === n.id) ? f.edges : [...f.edges, [st.connect.from, n.id]] } : f) })); } },
+        portDown: (e) => { e.stopPropagation(); const pt = this.cvPoint(e); this.st(() => ({ connect: { from: n.id, mx: pt.x, my: pt.y }, drag: null })); } }));
+      if (s.connect) { const A = pos[s.connect.from]; if (A) { const fx = A.x + NW, fy = A.y + NH / 2; pendingD = `M ${fx} ${fy} C ${fx + 50} ${fy}, ${s.connect.mx - 50} ${s.connect.my}, ${s.connect.mx} ${s.connect.my}`; } }
+      sel = activeFlow.nodes.find(n => n.id === s.selId);
+      nodeColors = ['#4653d6', '#0e7a6f', '#b3512e', '#5b5f6b'].map(c => ({ color: c,
+        pick: () => this.st(st => ({ flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, nodes: f.nodes.map(n => n.id === st.selId ? { ...n, color: c } : n) } : f) })),
+        sw: `width:22px;height:22px;border-radius:7px;cursor:pointer;background:${c};border:2px solid ${sel && sel.color === c ? '#1c1e26' : 'transparent'}` }));
+    }
+    const upd = (field) => (e) => { const v = e.target.value; this.st(st => ({ flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, nodes: f.nodes.map(n => n.id === st.selId ? { ...n, [field]: v } : n) } : f) })); };
+    const flowSelectOptions = s.flows.map(f => ({ id: f.id, name: f.name }));
+
+    const nowStamp = () => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
+    return {
+      accent, tabTitle: tabs[s.tab], headerDate, phaseNow, yearPct, logout,
+      isDash: s.tab === 'dash', isTasks: s.tab === 'tasks', isCal: s.tab === 'cal', isFlow: s.tab === 'flow', isCli: s.tab === 'cli', isTeam: s.tab === 'team', isIbs: s.tab === 'ibs', isKb: s.tab === 'kb',
+      tabDash: mkTab('dash'), tabTasks: mkTab('tasks'), tabCal: mkTab('cal'), tabFlow: mkTab('flow'), tabCli: mkTab('cli'), tabTeam: mkTab('team'), tabIbs: mkTab('ibs'), tabKb: mkTab('kb'),
+      team: s.team.map((p, i) => ({ ...p, avStyle: av(p, 28) + `;border:2px solid #fff;margin-left:${i ? -8 : 0}px` })),
+      kpis, phases, upcoming, load, lateBox,
+      viewList: s.view === 'list', viewCreate: s.view === 'create', viewDetail: s.view === 'detail' && !!dTask,
+      taskCards, taskFilters, clientOptions, clientFilter: s.clientFilter, categoryOptions,
+      onClientFilterChange: (e) => { const v = e.target.value; this.st(() => ({ clientFilter: v })); },
+      goCreate: () => this.st(() => ({ view: 'create', newTaskTitle: '', newTaskDescription: '', newTaskClients: [], newTaskPeople: [], newTaskSubtasks: [], newTaskSubtaskInput: '', newTaskStart: '', newTaskDue: '', newTaskCategory: 'Fiscal', newTaskRec: false, newTaskFlowId: '', newTaskClientSearch: '' })),
+      cancelCreate: () => this.st(() => ({ view: 'list' })),
+      newTaskTitle: s.newTaskTitle, newTaskDescription: s.newTaskDescription, newTaskCategory: s.newTaskCategory, newTaskStart: s.newTaskStart, newTaskDue: s.newTaskDue,
+      newTaskRec: s.newTaskRec, newTaskRecLabel: s.newTaskRecLabel, newTaskSubtaskInput: s.newTaskSubtaskInput,
+      newTaskPeopleOptions, newTaskSubtasksList, newTaskClientChips, newTaskClientList, newTaskClientSearch: s.newTaskClientSearch,
+      newTaskFlowId: s.newTaskFlowId, onNewTaskFlowId: (e) => { const v = e.target.value; this.st(() => ({ newTaskFlowId: v })); },
+      onNewTaskClientSearch: (e) => { const v = e.target.value; this.st(() => ({ newTaskClientSearch: v })); },
+      onNewTitle: (e) => { const v = e.target.value; this.st(() => ({ newTaskTitle: v })); },
+      onNewDescription: (e) => { const v = e.target.value; this.st(() => ({ newTaskDescription: v })); },
+      onNewCategory: (e) => { const v = e.target.value; this.st(() => ({ newTaskCategory: v })); },
+      onNewStart: (e) => { const v = e.target.value; this.st(() => ({ newTaskStart: v })); },
+      onNewDue: (e) => { const v = e.target.value; this.st(() => ({ newTaskDue: v })); },
+      onSubtaskInputChange: (e) => { const v = e.target.value; this.st(() => ({ newTaskSubtaskInput: v })); },
+      onSubtaskInputKey: (e) => { if (e.key === 'Enter' && s.newTaskSubtaskInput.trim()) this.st(st => ({ newTaskSubtaskInput: '', newTaskSubtasks: [...st.newTaskSubtasks, { id: Date.now(), title: st.newTaskSubtaskInput.trim() }] })); },
+      toggleNewRec: () => this.st(st => ({ newTaskRec: !st.newTaskRec })),
+      onNewRecLabel: (e) => { const v = e.target.value; this.st(() => ({ newTaskRecLabel: v })); },
+      newRecSwitch: `width:34px;height:19px;border-radius:99px;cursor:pointer;background:${s.newTaskRec ? accent : '#d8d8d4'};position:relative;transition:background .15s`,
+      newRecKnob: `width:15px;height:15px;border-radius:99px;background:#fff;position:absolute;top:2px;left:${s.newTaskRec ? 17 : 2}px;transition:left .15s`,
+      createTask: () => {
+        if (!s.newTaskTitle.trim()) return;
+        const id = Date.now();
+        this.st(st => ({ view: 'detail', detailTaskId: id, detailActiveClient: null,
+          tasks: [...st.tasks, { id, title: st.newTaskTitle.trim(), description: st.newTaskDescription, category: st.newTaskCategory, people: st.newTaskPeople.length ? st.newTaskPeople : [st.team[0] ? st.team[0].id : 'mc'], startDate: st.newTaskStart, dueDate: st.newTaskDue, rec: st.newTaskRec, recLabel: st.newTaskRecLabel, flowId: st.newTaskFlowId || null, subtasks: st.newTaskSubtasks.map(x => ({ id: 'ns' + x.id, title: x.title })), links: st.newTaskClients.map(cid => ({ clientId: cid, done: [] })), comments: [] }] }));
+      },
+      detail, detailLinks, detailSubtasks, detailComments, detailPeopleOptions, detailAvailableClients,
+      detailAddingLink: s.addingLinkDetail, detailSubtaskInput: s.detailSubtaskInput, commentDraft: s.commentDraft, detailClientSearch: s.detailClientSearch,
+      backToList: () => this.st(() => ({ view: 'list', detailTaskId: null })),
+      toggleAddLinkDetail: () => this.st(st => ({ addingLinkDetail: !st.addingLinkDetail, detailClientSearch: '' })),
+      onDetailClientSearch: (e) => { const v = e.target.value; this.st(() => ({ detailClientSearch: v })); },
+      onDetailSubtaskInputChange: (e) => { const v = e.target.value; this.st(() => ({ detailSubtaskInput: v })); },
+      onDetailSubtaskInputKey: (e) => { if (e.key === 'Enter' && s.detailSubtaskInput.trim() && dTask) this.st(st => ({ detailSubtaskInput: '', tasks: st.tasks.map(x => x.id === dTask.id ? { ...x, subtasks: [...x.subtasks, { id: 'ds' + Date.now(), title: st.detailSubtaskInput.trim() }] } : x) })); },
+      onCommentDraftChange: (e) => { const v = e.target.value; this.st(() => ({ commentDraft: v })); },
+      onSendComment: () => { if (!s.commentDraft.trim() || !dTask) return; this.st(st => ({ commentDraft: '', tasks: st.tasks.map(x => x.id === dTask.id ? { ...x, comments: [...(x.comments || []), { id: Date.now(), author: st.team[0] ? st.team[0].id : 'mc', text: st.commentDraft.trim(), time: nowStamp() }] } : x) })); },
+      monthGroups,
+      cliFilters, clients,
+      isLogin: s.authView === 'login', isSignup: s.authView === 'signup', isApp: s.authView === 'app', brandName,
+      loginEmail: s.loginEmail, loginPassword: s.loginPassword, loginError: s.loginError,
+      onLoginEmail: (e) => { const v = e.target.value; this.st(() => ({ loginEmail: v })); },
+      onLoginPassword: (e) => { const v = e.target.value; this.st(() => ({ loginPassword: v })); },
+      doLogin, goToSignup: () => this.st(() => ({ authView: 'signup', signupError: '' })),
+      signupOfficeName: s.signupOfficeName, signupResponsavel: s.signupResponsavel, signupCnpj: s.signupCnpj, signupEmail: s.signupEmail, signupPassword: s.signupPassword, signupConfirm: s.signupConfirm, signupError: s.signupError,
+      onSignupOfficeName: (e) => { const v = e.target.value; this.st(() => ({ signupOfficeName: v })); },
+      onSignupResponsavel: (e) => { const v = e.target.value; this.st(() => ({ signupResponsavel: v })); },
+      onSignupCnpj: (e) => { const v = e.target.value; this.st(() => ({ signupCnpj: v })); },
+      onSignupEmail: (e) => { const v = e.target.value; this.st(() => ({ signupEmail: v })); },
+      onSignupPassword: (e) => { const v = e.target.value; this.st(() => ({ signupPassword: v })); },
+      onSignupConfirm: (e) => { const v = e.target.value; this.st(() => ({ signupConfirm: v })); },
+      doSignup, goToLogin: () => this.st(() => ({ authView: 'login', loginError: '' })),
+      teamList, teamViewList: s.teamView === 'list', teamViewAdd: s.teamView === 'add',
+      goAddMember: () => this.st(() => ({ teamView: 'add', newMemberName: '', newMemberEmail: '', newMemberCargo: '', newMemberPermissao: 'Membro', newMemberColor: palette[s.team.length % palette.length] })),
+      goTeamList: () => this.st(() => ({ teamView: 'list' })),
+      newMemberName: s.newMemberName, newMemberEmail: s.newMemberEmail, newMemberCargo: s.newMemberCargo, newMemberPermissao: s.newMemberPermissao, memberColorSwatches, selPermissao,
+      onNewMemberName: (e) => { const v = e.target.value; this.st(() => ({ newMemberName: v })); },
+      onNewMemberEmail: (e) => { const v = e.target.value; this.st(() => ({ newMemberEmail: v })); },
+      onNewMemberCargo: (e) => { const v = e.target.value; this.st(() => ({ newMemberCargo: v })); },
+      onNewMemberPermissao: (e) => { const v = e.target.value; this.st(() => ({ newMemberPermissao: v })); },
+      submitMember: () => { if (!s.newMemberName.trim()) return;
+        this.st(st => ({ teamView: 'list', team: [...st.team, { id: 'm' + Date.now(), ini: iniOf(st.newMemberName.trim()), color: st.newMemberColor, name: st.newMemberName.trim(), email: st.newMemberEmail.trim(), cargo: st.newMemberCargo.trim() || 'Membro da equipe', permissao: st.newMemberPermissao }] })); },
+      selCategory, selRegime, selRec, selFlowLink, selPill,
+      isIbsDados: ibsSub === 'dados', isIbsProdutos: ibsSub === 'produtos',
+      pickIbsDados: () => this.st(() => ({ ibsSubTab: 'dados' })),
+      pickIbsProdutos: () => this.st(() => ({ ibsSubTab: 'produtos' })),
+      ibsTabDadosStyle: addPillStyle(ibsSub === 'dados'),
+      ibsTabProdutosStyle: addPillStyle(ibsSub === 'produtos'),
+      cstRows: s.cstRows, cclassRows: s.cclassRows, produtoRows: s.produtoRows,
+      isIbsList: s.ibsView === 'list', isIbsAdd: s.ibsView === 'add',
+      goAddIbs: () => this.st(() => ({ ibsView: 'add', ibsAddType: ibsSub === 'produtos' ? 'produto' : 'cst', ibsBatchText: '' })),
+      goIbsList: () => this.st(() => ({ ibsView: 'list' })),
+      isIbsAddCst: ibsAddType === 'cst', isIbsAddCclass: ibsAddType === 'cclass', isIbsAddProduto: ibsAddType === 'produto',
+      pickIbsAddCst: () => this.st(() => ({ ibsAddType: 'cst', ibsBatchText: '' })),
+      pickIbsAddCclass: () => this.st(() => ({ ibsAddType: 'cclass', ibsBatchText: '' })),
+      pickIbsAddProduto: () => this.st(() => ({ ibsAddType: 'produto', ibsBatchText: '' })),
+      ibsAddTypeCstStyle: addPillStyle(ibsAddType === 'cst'), ibsAddTypeCclassStyle: addPillStyle(ibsAddType === 'cclass'), ibsAddTypeProdutoStyle: addPillStyle(ibsAddType === 'produto'),
+      newCstCode: s.newCstCode, newCstDesc: s.newCstDesc,
+      onNewCstCode: (e) => { const v = e.target.value; this.st(() => ({ newCstCode: v })); },
+      onNewCstDesc: (e) => { const v = e.target.value; this.st(() => ({ newCstDesc: v })); },
+      submitCst: () => { if (!s.newCstCode.trim()) return; this.st(st => ({ cstRows: [...st.cstRows, { code: st.newCstCode.trim(), desc: st.newCstDesc.trim() }], newCstCode: '', newCstDesc: '' })); },
+      newCclassCode: s.newCclassCode, newCclassDesc: s.newCclassDesc,
+      onNewCclassCode: (e) => { const v = e.target.value; this.st(() => ({ newCclassCode: v })); },
+      onNewCclassDesc: (e) => { const v = e.target.value; this.st(() => ({ newCclassDesc: v })); },
+      submitCclass: () => { if (!s.newCclassCode.trim()) return; this.st(st => ({ cclassRows: [...st.cclassRows, { code: st.newCclassCode.trim(), desc: st.newCclassDesc.trim() }], newCclassCode: '', newCclassDesc: '' })); },
+      newProdNcm: s.newProdNcm, newProdDesc: s.newProdDesc, newProdCst: s.newProdCst, newProdCclass: s.newProdCclass,
+      newProdAliqIbs: s.newProdAliqIbs, newProdAliqCbs: s.newProdAliqCbs, newProdRedIbs: s.newProdRedIbs, newProdRedCbs: s.newProdRedCbs,
+      onNewProdNcm: (e) => { const v = e.target.value; this.st(() => ({ newProdNcm: v })); },
+      onNewProdDesc: (e) => { const v = e.target.value; this.st(() => ({ newProdDesc: v })); },
+      onNewProdCst: (e) => { const v = e.target.value; this.st(() => ({ newProdCst: v })); },
+      onNewProdCclass: (e) => { const v = e.target.value; this.st(() => ({ newProdCclass: v })); },
+      onNewProdAliqIbs: (e) => { const v = e.target.value; this.st(() => ({ newProdAliqIbs: v })); },
+      onNewProdAliqCbs: (e) => { const v = e.target.value; this.st(() => ({ newProdAliqCbs: v })); },
+      onNewProdRedIbs: (e) => { const v = e.target.value; this.st(() => ({ newProdRedIbs: v })); },
+      onNewProdRedCbs: (e) => { const v = e.target.value; this.st(() => ({ newProdRedCbs: v })); },
+      submitProduto: () => { if (!s.newProdNcm.trim()) return; this.st(st => ({ produtoRows: [...st.produtoRows, { ncm: st.newProdNcm.trim(), desc: st.newProdDesc.trim(), cst: st.newProdCst, cclass: st.newProdCclass, aliqIbs: st.newProdAliqIbs.trim(), aliqCbs: st.newProdAliqCbs.trim(), redIbs: st.newProdRedIbs.trim(), redCbs: st.newProdRedCbs.trim() }], newProdNcm: '', newProdDesc: '' })); },
+      ibsBatchText: s.ibsBatchText, ibsBatchCount: ibsBatchRows.length,
+      onIbsBatchTextChange: (e) => { const v = e.target.value; this.st(() => ({ ibsBatchText: v })); },
+      onIbsImportFile: (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
+        reader.onload = () => { const text = String(reader.result || ''); this.st(() => ({ ibsBatchText: text })); };
+        reader.readAsText(file); },
+      confirmIbsBatch: () => { if (!ibsBatchRows.length) return;
+        this.st(st => ibsAddType === 'cst' ? { cstRows: [...st.cstRows, ...ibsBatchRows], ibsBatchText: '' }
+          : ibsAddType === 'cclass' ? { cclassRows: [...st.cclassRows, ...ibsBatchRows], ibsBatchText: '' }
+          : { produtoRows: [...st.produtoRows, ...ibsBatchRows], ibsBatchText: '' }); },
+      clientViewList: s.clientView === 'list', clientViewAdd: s.clientView === 'add', clientViewDetail: s.clientView === 'detail' && !!clientDetail,
+      goAddClient: () => this.st(() => ({ clientView: 'add', newClientName: '', newClientSetor: '', newClientRegime: 'Simples Nacional', batchText: '' })),
+      goClientList: () => this.st(() => ({ clientView: 'list' })),
+      clientDetail, clientDetailTasks,
+      newClientName: s.newClientName, newClientSetor: s.newClientSetor, newClientRegime: s.newClientRegime,
+      onNewClientName: (e) => { const v = e.target.value; this.st(() => ({ newClientName: v })); },
+      onNewClientSetor: (e) => { const v = e.target.value; this.st(() => ({ newClientSetor: v })); },
+      onNewClientRegime: (e) => { const v = e.target.value; this.st(() => ({ newClientRegime: v })); },
+      submitSingleClient: () => { if (!s.newClientName.trim()) return; addClientsBulk([{ name: s.newClientName.trim(), setor: s.newClientSetor.trim(), regime: s.newClientRegime }]); this.st(() => ({ clientView: 'list' })); },
+      batchText: s.batchText, batchCount: batchRows.length,
+      onBatchTextChange: (e) => { const v = e.target.value; this.st(() => ({ batchText: v })); },
+      confirmBatch: () => { if (!batchRows.length) return; addClientsBulk(batchRows); this.st(() => ({ clientView: 'list', batchText: '' })); },
+      onImportFile: (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
+        reader.onload = () => { const text = String(reader.result || ''); this.st(() => ({ batchText: text })); };
+        reader.readAsText(file); },
+      notes, noteTitle: note.title, noteMeta: note.meta, noteTags: note.tags, noteParas: note.paras,
+      nodes, edges, pendingEdge: !!s.connect, pendingD,
+      cvStyle: `flex:1;position:relative;overflow:hidden;background:#f7f7f4;background-image:radial-gradient(#dcdcd7 1.1px, transparent 1.1px);background-size:22px 22px;cursor:${s.panning ? 'grabbing' : 'default'}`,
+      worldStyle: `position:absolute;left:0;top:0;transform:translate(${s.pan.x}px,${s.pan.y}px) scale(${s.zoom});transform-origin:0 0`,
+      cvDown: (e) => { if (e.target === e.currentTarget) this.st(st => ({ panning: { sx: e.clientX - st.pan.x, sy: e.clientY - st.pan.y }, selId: null })); },
+      cvMove: (e) => {
+        if (s.drag) { const pt = this.cvPoint(e); this.st(st => st.drag ? ({ flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, nodes: f.nodes.map(n => n.id === st.drag.id ? { ...n, x: pt.x - st.drag.dx, y: pt.y - st.drag.dy } : n) } : f) }) : null); }
+        else if (s.connect) { const pt = this.cvPoint(e); this.st(st => st.connect ? ({ connect: { ...st.connect, mx: pt.x, my: pt.y } }) : null); }
+        else if (s.panning) { this.st(st => st.panning ? ({ pan: { x: e.clientX - st.panning.sx, y: e.clientY - st.panning.sy } }) : null); }
+      },
+      cvUp: () => this.st(() => ({ drag: null, panning: null, connect: null })),
+      cvDbl: (e) => { if (e.target !== e.currentTarget) return; const pt = this.cvPoint(e);
+        this.st(st => { const id = 'n' + Date.now(); return { flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, nodes: [...f.nodes, { id, x: pt.x - NW / 2, y: pt.y - NH / 2, title: 'Nova etapa', desc: 'Descreva esta etapa do fluxo', color: '#5b5f6b' }] } : f), selId: id }; }); },
+      flowAddNode: () => this.st(st => { const id = 'n' + Date.now(); return { flows: st.flows.map(f => f.id === st.activeFlowId ? { ...f, nodes: [...f.nodes, { id, x: (80 - st.pan.x) / st.zoom, y: (80 - st.pan.y) / st.zoom, title: 'Nova etapa', desc: 'Descreva esta etapa do fluxo', color: '#5b5f6b' }] } : f), selId: id }; }),
+      zoomIn: () => this.st(st => ({ zoom: Math.min(2, +(st.zoom + .15).toFixed(2)) })),
+      zoomOut: () => this.st(st => ({ zoom: Math.max(.4, +(st.zoom - .15).toFixed(2)) })),
+      zoomReset: () => this.st(() => ({ zoom: 1, pan: { x: 30, y: 40 } })),
+      zoomLabel: Math.round(s.zoom * 100) + '%',
+      selNode: !!sel, selTitle: sel ? sel.title : '', selDesc: sel ? sel.desc : '', nodeColors,
+      onSelTitle: upd('title'), onSelDesc: upd('desc'),
+      delNode: () => this.st(st => ({ selId: null, flows: st.flows.map(f => f.id === st.activeFlowId ? { id: f.id, name: f.name, nodes: f.nodes.filter(n => n.id !== st.selId), edges: f.edges.filter(([a, b]) => a !== st.selId && b !== st.selId) } : f) })),
+      closePanel: () => this.st(() => ({ selId: null })),
+      flowViewList: s.flowView === 'list', flowViewCanvas: s.flowView === 'canvas' && !!activeFlow,
+      flowList, goFlowList, createFlow, onFlowNameChange, activeFlowName: activeFlow ? activeFlow.name : '', flowSelectOptions
+    };
+  }
+
+  renderHero(g, title, sub) {
+    return (
+      <div style={S(`flex:1 1 46%;max-width:560px;background:#12131a;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:48px 56px;color:#fff`)}>
+        <div style={S(`position:absolute;inset:0;background-image:radial-gradient(#ffffff14 1.2px, transparent 1.2px);background-size:26px 26px;opacity:.6`)}></div>
+        <div style={S(`position:relative;display:flex;align-items:center;gap:10px`)}>
+          <div style={S(`width:30px;height:30px;border-radius:8px;background:${ACCENT};display:grid;place-items:center;font-weight:700;font-size:14px`)}>R</div>
+          <div style={S(`font-weight:700;font-size:14px;letter-spacing:-.01em`)}>{g.brandName}</div>
+        </div>
+        <div style={S(`position:relative;max-width:400px`)}>
+          <div style={S(`font-size:34px;font-weight:700;line-height:1.22;letter-spacing:-.02em;text-wrap:pretty`)}>{title}</div>
+          <div style={S(`font-size:14.5px;color:#b7b9c4;line-height:1.65;margin-top:16px;text-wrap:pretty`)}>{sub}</div>
+        </div>
+        <div style={S(`position:relative;display:flex`)}>
+          <div style={S(`padding-right:22px;border-right:1px solid #ffffff22`)}>
+            <div style={S(`font-size:19px;font-weight:700;font-family:'JetBrains Mono',monospace`)}>2026→33</div>
+            <div style={S(`font-size:11px;color:#8d8fa0;margin-top:4px`)}>Período de transição</div>
+          </div>
+          <div style={S(`padding:0 22px;border-right:1px solid #ffffff22`)}>
+            <div style={S(`font-size:19px;font-weight:700;font-family:'JetBrains Mono',monospace`)}>CBS·IBS·IS</div>
+            <div style={S(`font-size:11px;color:#8d8fa0;margin-top:4px`)}>Novos tributos</div>
+          </div>
+          <div style={S(`padding-left:22px`)}>
+            <div style={S(`font-size:19px;font-weight:700;font-family:'JetBrains Mono',monospace`)}>100%</div>
+            <div style={S(`font-size:11px;color:#8d8fa0;margin-top:4px`)}>Substitui PIS/Cofins e ICMS/ISS</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderLogin(g) {
+    const lbl = `font-size:11.5px;font-weight:600;color:#6b6e78;margin-bottom:6px`;
+    return (
+      <div style={S(`display:flex;min-height:100vh;background:#fff`)}>
+        {this.renderHero(g, 'Bem-vindo de volta ao seu escritório.', 'Acompanhe prazos, tarefas e a transição para o novo modelo tributário — tudo em um só lugar, do ano-teste de 2026 à vigência plena em 2033.')}
+        <div style={S(`flex:1;display:flex;align-items:center;justify-content:center;padding:40px`)}>
+          <div style={S(`width:100%;max-width:360px;display:flex;flex-direction:column;gap:26px`)}>
+            <div>
+              <div style={S(`font-size:22px;font-weight:700;letter-spacing:-.01em`)}>Entrar</div>
+              <div style={S(`font-size:13px;color:#8a8d98;margin-top:6px`)}>Acesse a conta do seu escritório.</div>
+            </div>
+            <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+              <div>
+                <div style={S(lbl)}>E-mail</div>
+                <input className="fc" value={g.loginEmail} onChange={g.onLoginEmail} type="email" placeholder="voce@escritorio.com.br" style={S(AUTH_INP)} />
+              </div>
+              <div>
+                <div style={S(`display:flex;justify-content:space-between;margin-bottom:6px`)}>
+                  <div style={S(`font-size:11.5px;font-weight:600;color:#6b6e78`)}>Senha</div>
+                  <div style={S(`font-size:11.5px;color:${ACCENT};cursor:pointer`)}>Esqueci minha senha</div>
+                </div>
+                <input className="fc" value={g.loginPassword} onChange={g.onLoginPassword} onKeyDown={(e) => { if (e.key === 'Enter') g.doLogin(); }} type="password" placeholder="••••••••" style={S(AUTH_INP)} />
+              </div>
+            </div>
+            {g.loginError ? <div style={S(`font-size:12px;color:#b3402e`)}>{g.loginError}</div> : null}
+            <div onClick={g.doLogin} className="hv-btn" style={S(`text-align:center;font-size:13.5px;font-weight:700;color:#fff;background:${ACCENT};padding:12px;border-radius:10px;cursor:pointer`)}>Entrar</div>
+            <div style={S(`text-align:center;font-size:12.5px;color:#8a8d98`)}>Ainda não tem conta? <span onClick={g.goToSignup} style={S(`color:${ACCENT};font-weight:600;cursor:pointer`)}>Cadastre seu escritório</span></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderSignup(g) {
+    const lbl = `font-size:11.5px;font-weight:600;color:#6b6e78;margin-bottom:6px`;
+    return (
+      <div style={S(`display:flex;min-height:100vh;background:#fff`)}>
+        {this.renderHero(g, 'Leve seu escritório pela transição tributária.', 'Cadastre seu escritório e centralize tarefas, prazos e a adequação de todos os seus clientes à CBS, ao IBS e ao Imposto Seletivo.')}
+        <div style={S(`flex:1;display:flex;align-items:center;justify-content:center;padding:40px;overflow:auto`)}>
+          <div style={S(`width:100%;max-width:400px;display:flex;flex-direction:column;gap:22px;padding:24px 0`)}>
+            <div>
+              <div style={S(`font-size:22px;font-weight:700;letter-spacing:-.01em`)}>Cadastre seu escritório</div>
+              <div style={S(`font-size:13px;color:#8a8d98;margin-top:6px`)}>Sua equipe será convidada depois, na aba Equipe.</div>
+            </div>
+            <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+              <div>
+                <div style={S(lbl)}>Nome do escritório</div>
+                <input className="fc" value={g.signupOfficeName} onChange={g.onSignupOfficeName} placeholder="Ex.: Andrade Contabilidade" style={S(AUTH_INP)} />
+              </div>
+              <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:12px`)}>
+                <div>
+                  <div style={S(lbl)}>Seu nome</div>
+                  <input className="fc" value={g.signupResponsavel} onChange={g.onSignupResponsavel} placeholder="Responsável" style={S(AUTH_INP)} />
+                </div>
+                <div>
+                  <div style={S(lbl)}>CNPJ</div>
+                  <input className="fc" value={g.signupCnpj} onChange={g.onSignupCnpj} placeholder="00.000.000/0001-00" style={S(AUTH_INP)} />
+                </div>
+              </div>
+              <div>
+                <div style={S(lbl)}>E-mail</div>
+                <input className="fc" value={g.signupEmail} onChange={g.onSignupEmail} type="email" placeholder="voce@escritorio.com.br" style={S(AUTH_INP)} />
+              </div>
+              <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:12px`)}>
+                <div>
+                  <div style={S(lbl)}>Senha</div>
+                  <input className="fc" value={g.signupPassword} onChange={g.onSignupPassword} type="password" placeholder="••••••••" style={S(AUTH_INP)} />
+                </div>
+                <div>
+                  <div style={S(lbl)}>Confirmar senha</div>
+                  <input className="fc" value={g.signupConfirm} onChange={g.onSignupConfirm} type="password" placeholder="••••••••" style={S(AUTH_INP)} />
+                </div>
+              </div>
+            </div>
+            {g.signupError ? <div style={S(`font-size:12px;color:#b3402e`)}>{g.signupError}</div> : null}
+            <div onClick={g.doSignup} className="hv-btn" style={S(`text-align:center;font-size:13.5px;font-weight:700;color:#fff;background:${ACCENT};padding:12px;border-radius:10px;cursor:pointer`)}>Criar conta do escritório</div>
+            <div style={S(`text-align:center;font-size:12.5px;color:#8a8d98`)}>Já tem conta? <span onClick={g.goToLogin} style={S(`color:${ACCENT};font-weight:600;cursor:pointer`)}>Entrar</span></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderDash(g) {
+    return (
+      <div style={S(`padding:22px;display:flex;flex-direction:column;gap:18px;animation:fadeUp .3s ease`)}>
+        <div style={S(`display:grid;grid-template-columns:repeat(4,1fr);gap:14px`)}>
+          {g.kpis.map((k, i) => (
+            <div key={i} style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px`)}>
+              <div style={S(`font-size:11px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>{k.label}</div>
+              <div style={S(`display:flex;align-items:baseline;gap:6px;margin-top:8px`)}>
+                <span style={S(`font-size:26px;font-weight:700;letter-spacing:-.02em`)}>{k.value}</span>
+                <span style={S(`font-size:12px;color:#8a8d98`)}>{k.suffix}</span>
+              </div>
+              <div style={S(k.deltaStyle)}>{k.delta}</div>
+            </div>
+          ))}
+        </div>
+        <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:18px 20px`)}>
+          <div style={S(`display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px`)}>
+            <div style={S(`font-size:13.5px;font-weight:700`)}>Linha do tempo da transição</div>
+            <div style={S(`font-size:11px;color:#8a8d98`)}>EC 132/2023 · LC 214/2025</div>
+          </div>
+          <div style={S(`display:grid;grid-template-columns:repeat(6,1fr);gap:10px`)}>
+            {g.phases.map((ph, i) => (
+              <div key={i} style={S(ph.style)}>
+                <div style={S(ph.yearStyle)}>{ph.year}</div>
+                <div style={S(`font-size:12px;font-weight:600;margin-top:6px`)}>{ph.title}</div>
+                <div style={S(`font-size:11px;color:#7c7f89;margin-top:3px;line-height:1.45;text-wrap:pretty`)}>{ph.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={S(`display:grid;grid-template-columns:1.2fr .8fr;gap:14px`)}>
+          <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:18px 20px`)}>
+            <div style={S(`display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px`)}>
+              <div style={S(`font-size:13.5px;font-weight:700`)}>Próximos prazos</div>
+              <div onClick={g.tabCal.go} style={S(`font-size:12px;color:${ACCENT};cursor:pointer;font-weight:600`)}>Ver calendário →</div>
+            </div>
+            <div style={S(`display:flex;flex-direction:column`)}>
+              {g.upcoming.map((u, i) => (
+                <div key={i} style={S(`display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid #f0f0ed`)}>
+                  <div style={S(u.dateStyle)}>{u.dateLabel}</div>
+                  <div style={S(u.dot)}></div>
+                  <div style={S(`font-size:12.5px;flex:1`)}>{u.title}</div>
+                  <div style={S(u.badge)}>{u.tipoLabel}</div>
+                </div>
+              ))}
+              {g.upcoming.length === 0 ? <div style={S(`font-size:12px;color:#a0a3ad;font-style:italic;padding:6px 0`)}>Nenhum prazo futuro cadastrado.</div> : null}
+            </div>
+          </div>
+          <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:18px 20px`)}>
+            <div style={S(`font-size:13.5px;font-weight:700;margin-bottom:12px`)}>Carga por responsável</div>
+            <div style={S(`display:flex;flex-direction:column;gap:12px`)}>
+              {g.load.map((l) => (
+                <div key={l.id}>
+                  <div style={S(`display:flex;align-items:center;gap:8px;margin-bottom:5px`)}>
+                    <div style={S(l.avStyle)}>{l.ini}</div>
+                    <div style={S(`font-size:12.5px;font-weight:600;flex:1`)}>{l.name}</div>
+                    <div style={S(`font-size:11px;color:#8a8d98;font-family:'JetBrains Mono',monospace`)}>{l.count} tarefas</div>
+                  </div>
+                  <div style={S(`height:6px;background:#f0f0ed;border-radius:99px;overflow:hidden`)}><div style={S(l.barStyle)}></div></div>
+                </div>
+              ))}
+            </div>
+            {g.lateBox ? (
+              <div style={S(`margin-top:16px;padding:12px;border-radius:10px;background:#fdf6ef;border:1px solid #f3e2cd`)}>
+                <div style={S(`font-size:12px;font-weight:700;color:#9a5b1f`)}>{g.lateBox.title}</div>
+                <div style={S(`font-size:11.5px;color:#a97b47;margin-top:2px`)}>{g.lateBox.text}</div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderTaskList(g) {
+    return (
+      <div style={S(`padding:20px 22px;height:100%;display:flex;flex-direction:column;gap:14px;overflow:auto`)}>
+        <div style={S(`display:flex;align-items:center;gap:8px;flex-wrap:wrap`)}>
+          {g.taskFilters.map((f) => (
+            <div key={f.id} onClick={f.go} className="hv-card" style={S(f.style)}>{f.label}</div>
+          ))}
+          <select value={g.clientFilter} onChange={g.onClientFilterChange} style={S(g.selPill)}>
+            <option value="all">Todos os clientes</option>
+            {g.clientOptions.map((co) => <option key={co.id} value={co.id}>{co.name}</option>)}
+          </select>
+          <div onClick={g.goCreate} className="hv-btn" style={S(`margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:7px 14px;cursor:pointer`)}>+ Nova tarefa</div>
+        </div>
+        <div style={S(`display:flex;flex-direction:column;gap:12px`)}>
+          {g.taskCards.map((t) => (
+            <div key={t.id} onClick={t.onOpen} className="hv-card" style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px;cursor:pointer`)}>
+              <div style={S(`display:flex;align-items:center;gap:7px;flex-wrap:wrap`)}>
+                <div style={S(t.catBadge)}>{t.category}</div>
+                {t.rec ? <div style={S(t.recBadgeStyle)}>↻ {t.recLabel}</div> : null}
+                <div style={S(t.dateStyle)}>{t.dateRange}</div>
+                <div style={S(`margin-left:auto;` + t.avgStyle)}>{t.avgLabel}</div>
+                <div onClick={t.onDelTask} title="Excluir tarefa" className="hv-danger" style={S(`color:#c2c3c9;cursor:pointer;padding:2px`)}><TrashIcon /></div>
+              </div>
+              <div style={S(`font-size:14px;font-weight:700;margin-top:9px;line-height:1.4;text-wrap:pretty`)}>{t.title}</div>
+              <div style={S(`display:flex;align-items:center;margin-top:8px`)}>
+                {t.peopleAv.map((pv, i) => <div key={i} style={S(pv.style)} title={pv.name}>{pv.ini}</div>)}
+                <div style={S(`font-size:11px;color:#8a8d98;margin-left:8px`)}>{t.subtaskCountLabel}</div>
+              </div>
+              <div style={S(`height:1px;background:#f0f0ed;margin:12px 0`)}></div>
+              <div style={S(`display:flex;flex-direction:column;gap:4px`)}>
+                {t.links.map((l) => (
+                  <div key={l.clientId} onClick={l.onOpen} className="hv-soft" style={S(`display:flex;align-items:center;gap:10px;padding:5px 6px;border-radius:8px`)}>
+                    <div style={S(l.avStyle)}>{l.ini}</div>
+                    <div style={S(`font-size:12.5px;font-weight:500;width:150px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}>{l.name}</div>
+                    <div style={S(`flex:1;height:6px;background:#f0f0ed;border-radius:99px;overflow:hidden`)}><div style={S(l.barStyle)}></div></div>
+                    <div style={S(`font-size:11px;color:#6b6e78;font-family:'JetBrains Mono',monospace;width:34px;text-align:right`)}>{l.pct}%</div>
+                    <div style={S(l.statusStyle)}>{l.statusLabel}</div>
+                  </div>
+                ))}
+                {t.noLinks ? <div style={S(`font-size:11.5px;color:#a0a3ad;font-style:italic;padding:4px 6px`)}>Nenhum cliente vinculado</div> : null}
+              </div>
+            </div>
+          ))}
+          {g.taskCards.length === 0 ? <div style={S(`font-size:12.5px;color:#a0a3ad;font-style:italic;padding:10px 2px`)}>Nenhuma tarefa encontrada com os filtros atuais.</div> : null}
+        </div>
+      </div>
+    );
+  }
+
+  renderTaskCreate(g) {
+    return (
+      <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+        <div style={S(`flex:none;display:flex;align-items:center;gap:12px;padding:14px 22px;background:#fff;border-bottom:1px solid #e7e7e3`)}>
+          <div onClick={g.cancelCreate} className="hv-light" style={S(`width:30px;height:30px;border-radius:8px;display:grid;place-items:center;cursor:pointer;color:#4b4e58`)}>
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+          </div>
+          <div style={S(`font-size:13px;font-weight:700`)}>Nova tarefa</div>
+          <div onClick={g.createTask} className="hv-btn" style={S(`margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:8px 16px;border-radius:8px;cursor:pointer`)}>Criar tarefa</div>
+        </div>
+        <div style={S(`flex:1;overflow:auto;padding:24px 28px 60px`)}>
+          <div style={S(`display:grid;grid-template-columns:1.6fr 1fr;gap:24px;align-items:start`)}>
+            <div style={S(`display:flex;flex-direction:column;gap:18px;min-width:0`)}>
+              <input className="fc" value={g.newTaskTitle} onChange={g.onNewTitle} placeholder="Título da tarefa" autoFocus style={S(`font:700 19px 'Instrument Sans',sans-serif;border:none;border-bottom:2px solid #e2e2de;padding:6px 2px;outline:none`)} />
+              <textarea value={g.newTaskDescription} onChange={g.onNewDescription} rows={3} placeholder="Descreva o objetivo desta tarefa…" style={S(`width:100%;font:400 13px 'Instrument Sans',sans-serif;border:1px solid #e2e2de;border-radius:10px;padding:11px 13px;outline:none;resize:vertical;line-height:1.6`)}></textarea>
+              <div style={S(`display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px`)}>
+                <div>
+                  <FLabel>Categoria</FLabel>
+                  <select value={g.newTaskCategory} onChange={g.onNewCategory} style={S(`width:100%;` + g.selCategory)}>
+                    {g.categoryOptions.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <FLabel>Data inicial</FLabel>
+                  <input type="date" value={g.newTaskStart} onChange={g.onNewStart} style={S(`width:100%;font-size:12.5px;padding:7px 9px;border-radius:8px;border:1px solid #e2e2de;color:#33363f`)} />
+                </div>
+                <div>
+                  <FLabel>Prazo final</FLabel>
+                  <input type="date" value={g.newTaskDue} onChange={g.onNewDue} style={S(`width:100%;font-size:12.5px;padding:7px 9px;border-radius:8px;border:1px solid #e2e2de;color:#33363f`)} />
+                </div>
+              </div>
+              <div>
+                <FLabel>Subtarefas</FLabel>
+                <div style={S(`display:flex;flex-direction:column;gap:6px;margin-bottom:8px`)}>
+                  {g.newTaskSubtasksList.map((sti) => (
+                    <div key={sti.id} style={S(`display:flex;align-items:center;gap:8px;background:#f7f7f4;border-radius:7px;padding:8px 10px`)}>
+                      <div style={S(`font-size:12.5px;flex:1`)}>{sti.title}</div>
+                      <div onClick={sti.onRemove} className="hv-danger" style={S(`color:#c2c3c9;cursor:pointer`)}>✕</div>
+                    </div>
+                  ))}
+                </div>
+                <input value={g.newTaskSubtaskInput} onChange={g.onSubtaskInputChange} onKeyDown={g.onSubtaskInputKey} placeholder="Nova subtarefa — Enter para adicionar" style={S(`width:100%;font-size:12.5px;padding:9px 11px;border-radius:8px;border:1px solid #e2e2de;outline:none`)} />
+              </div>
+              <div style={S(`display:flex;align-items:center;gap:10px`)}>
+                <div onClick={g.toggleNewRec} style={S(g.newRecSwitch)}><div style={S(g.newRecKnob)}></div></div>
+                <div style={S(`font-size:12px;color:#4b4e58`)}>Recorrente</div>
+                {g.newTaskRec ? (
+                  <select value={g.newTaskRecLabel} onChange={g.onNewRecLabel} style={S(g.selRec)}>
+                    <option value="mensal">Mensal</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                ) : null}
+              </div>
+            </div>
+            <div style={S(`display:flex;flex-direction:column;gap:18px;min-width:0`)}>
+              <div>
+                <FLabel>Pessoas envolvidas</FLabel>
+                <div style={S(`display:flex;gap:6px;flex-wrap:wrap`)}>
+                  {g.newTaskPeopleOptions.map((po) => <div key={po.id} onClick={po.toggle} style={S(po.style)}>{po.name}</div>)}
+                </div>
+              </div>
+              <div>
+                <FLabel>Clientes vinculados ({g.newTaskClientChips.length})</FLabel>
+                {g.newTaskClientChips.length > 0 ? (
+                  <div style={S(`display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px`)}>
+                    {g.newTaskClientChips.map((chip) => (
+                      <div key={chip.id} style={S(`display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 5px 4px 9px;border-radius:99px;background:#eef1ff;color:${ACCENT}`)}>{chip.name}<span onClick={chip.onRemove} style={S(`cursor:pointer;padding:1px 3px`)}>✕</span></div>
+                    ))}
+                  </div>
+                ) : null}
+                <div style={S(`border:1px solid #e2e2de;border-radius:10px;overflow:hidden`)}>
+                  <input value={g.newTaskClientSearch} onChange={g.onNewTaskClientSearch} placeholder={`Buscar entre ${g.clientOptions.length} clientes…`} style={S(`width:100%;border:none;border-bottom:1px solid #e2e2de;padding:9px 11px;font-size:12px;outline:none`)} />
+                  <div style={S(`max-height:230px;overflow:auto;padding:4px`)}>
+                    {g.newTaskClientList.map((cc) => (
+                      <div key={cc.id} onClick={cc.toggle} style={S(cc.rowStyle)}>
+                        <div style={S(cc.boxStyle)}>{cc.picked ? <CheckMark size={9} /> : null}</div>
+                        <div style={S(`font-size:12.5px`)}>{cc.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <FLabel>Fluxo vinculado</FLabel>
+                <select value={g.newTaskFlowId} onChange={g.onNewTaskFlowId} style={S(`width:100%;` + g.selFlowLink)}>
+                  <option value="">Nenhum</option>
+                  {g.flowSelectOptions.map((fo) => <option key={fo.id} value={fo.id}>{fo.name}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderTaskDetail(g) {
+    const d = g.detail;
+    return (
+      <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+        <BackBar onBack={g.backToList} title="Tarefa">
+          <div onClick={d.onDelete} title="Excluir tarefa" className="hv-danger" style={S(`margin-left:auto;color:#c2c3c9;cursor:pointer;padding:4px`)}>
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 4h11M6 4V2.3h4V4M4 4l.8 10h6.4l.8-10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+          </div>
+        </BackBar>
+        <div style={S(`flex:1;overflow:auto;padding:24px 28px 60px`)}>
+          <div style={S(`display:grid;grid-template-columns:1.6fr 1fr;gap:24px;align-items:start`)}>
+            <div style={S(`display:flex;flex-direction:column;gap:18px;min-width:0`)}>
+              <input className="fc hv-inbdr" value={d.title} onChange={d.onTitleChange} style={S(`font:700 19px 'Instrument Sans',sans-serif;border:1px solid transparent;border-radius:8px;padding:6px 8px;outline:none;margin:0 -8px`)} />
+              <div style={S(`display:flex;align-items:center;gap:8px;flex-wrap:wrap`)}>
+                <div style={S(d.catBadge)}>{d.category}</div>
+                <select value={d.category} onChange={d.onCategoryChange} style={S(g.selCategory)}>
+                  {g.categoryOptions.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <input type="date" value={d.startDate || ''} onChange={d.onStartChange} style={S(`font-size:11.5px;padding:5px 7px;border-radius:7px;border:1px solid #e2e2de;color:#4b4e58`)} />
+                <div style={S(`font-size:12px;color:#a0a3ad`)}>→</div>
+                <input type="date" value={d.dueDate || ''} onChange={d.onDueChange} style={S(`font-size:11.5px;padding:5px 7px;border-radius:7px;border:1px solid #e2e2de;color:#4b4e58`)} />
+                <div onClick={d.toggleRec} style={S(d.recSwitch)}><div style={S(d.recKnob)}></div></div>
+                <div style={S(`font-size:11.5px;color:#8a8d98`)}>Recorrente</div>
+                {d.rec ? (
+                  <select value={d.recLabel} onChange={d.onRecLabelChange} style={S(g.selRec)}>
+                    <option value="mensal">Mensal</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                ) : null}
+              </div>
+              <div>
+                <FLabel>Descrição</FLabel>
+                <textarea value={d.description} onChange={d.onDescChange} rows={3} placeholder="Sem descrição — adicione notas sobre esta tarefa…" style={S(`width:100%;font:400 13px 'Instrument Sans',sans-serif;border:1px solid #e2e2de;border-radius:10px;padding:11px 13px;outline:none;resize:vertical;line-height:1.6`)}></textarea>
+              </div>
+              <div style={S(`height:1px;background:#f0f0ed`)}></div>
+              <div>
+                <div style={S(`font-size:10.5px;font-weight:600;color:#8a8d98;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px`)}>Subtarefas</div>
+                {d.activeClientName ? (
+                  <div style={S(`font-size:11.5px;color:#8a8d98;margin-bottom:8px`)}>Progresso de <b>{d.activeClientName}</b> — {d.activePct}%</div>
+                ) : null}
+                <div style={S(`display:flex;flex-direction:column`)}>
+                  {g.detailSubtasks.map((ds) => (
+                    <div key={ds.id} className="hv-soft" style={S(`display:flex;align-items:center;gap:10px;padding:7px 4px;border-radius:8px`)}>
+                      <div onClick={ds.toggle} style={S(ds.boxStyle + ';cursor:pointer')}>{ds.done ? <CheckMark /> : null}</div>
+                      <div onClick={ds.toggle} style={S(ds.textStyle + ';cursor:pointer')}>{ds.title}</div>
+                      <div onClick={ds.onRemove} className="hv-danger" style={S(`color:#c2c3c9;cursor:pointer`)}>✕</div>
+                    </div>
+                  ))}
+                </div>
+                <input value={g.detailSubtaskInput} onChange={g.onDetailSubtaskInputChange} onKeyDown={g.onDetailSubtaskInputKey} placeholder="Nova subtarefa — Enter para adicionar" style={S(`width:100%;font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid #e2e2de;outline:none;margin-top:6px`)} />
+              </div>
+              <div style={S(`height:1px;background:#f0f0ed`)}></div>
+              <div>
+                <div style={S(`font-size:10.5px;font-weight:600;color:#8a8d98;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px`)}>Comentários</div>
+                <div style={S(`display:flex;flex-direction:column;gap:12px;margin-bottom:12px`)}>
+                  {g.detailComments.map((cm, i) => (
+                    <div key={i} style={S(`display:flex;gap:10px`)}>
+                      <div style={S(cm.avStyle)}>{cm.ini}</div>
+                      <div style={S(`flex:1;background:#f7f7f4;border-radius:10px;padding:9px 12px`)}>
+                        <div style={S(`display:flex;align-items:baseline;gap:8px`)}>
+                          <div style={S(`font-size:12px;font-weight:700`)}>{cm.name}</div>
+                          <div style={S(`font-size:10.5px;color:#a0a3ad`)}>{cm.time}</div>
+                        </div>
+                        <div style={S(`font-size:12.5px;color:#33363f;margin-top:3px;line-height:1.5;text-wrap:pretty`)}>{cm.text}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={S(`display:flex;gap:10px;align-items:flex-end`)}>
+                  <textarea value={g.commentDraft} onChange={g.onCommentDraftChange} rows={2} placeholder="Escreva um comentário…" style={S(`flex:1;font:400 12.5px 'Instrument Sans',sans-serif;border:1px solid #e2e2de;border-radius:10px;padding:9px 11px;outline:none;resize:vertical`)}></textarea>
+                  <div onClick={g.onSendComment} className="hv-btn" style={S(`font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap`)}>Comentar</div>
+                </div>
+              </div>
+            </div>
+            <div style={S(`display:flex;flex-direction:column;gap:18px;min-width:0`)}>
+              <div>
+                <FLabel>Pessoas envolvidas</FLabel>
+                <div style={S(`display:flex;gap:6px;flex-wrap:wrap`)}>
+                  {g.detailPeopleOptions.map((po) => <div key={po.id} onClick={po.toggle} style={S(po.style)}>{po.name}</div>)}
+                </div>
+              </div>
+              <div>
+                <div style={S(`font-size:10.5px;font-weight:600;color:#8a8d98;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px`)}>Clientes &amp; progresso ({g.detailLinks.length})</div>
+                <div style={S(`display:flex;flex-direction:column;gap:5px;max-height:280px;overflow:auto;margin-bottom:8px`)}>
+                  {g.detailLinks.map((l) => (
+                    <div key={l.clientId} onClick={l.onSelect} style={S(l.rowStyle)}>
+                      <div style={S(l.avStyle)}>{l.ini}</div>
+                      <div style={S(`font-size:12px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}>{l.name}</div>
+                      <div style={S(`font-size:10.5px;color:#6b6e78;font-family:'JetBrains Mono',monospace`)}>{l.pct}%</div>
+                      <div onClick={l.onRemove} title="Desvincular" className="hv-danger" style={S(`color:#c2c3c9;cursor:pointer`)}>
+                        <svg width="12" height="12" viewBox="0 0 13 13"><path d="M2.5 2.5l8 8M10.5 2.5l-8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"></path></svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {g.detailAddingLink ? (
+                  <div style={S(`border:1px solid #e2e2de;border-radius:10px;overflow:hidden;margin-bottom:8px`)}>
+                    <input value={g.detailClientSearch} onChange={g.onDetailClientSearch} autoFocus placeholder="Buscar cliente…" style={S(`width:100%;border:none;border-bottom:1px solid #e2e2de;padding:9px 11px;font-size:12px;outline:none`)} />
+                    <div style={S(`max-height:200px;overflow:auto;padding:4px`)}>
+                      {g.detailAvailableClients.map((ac) => (
+                        <div key={ac.id} onClick={ac.onPick} className="hv-soft" style={S(`font-size:12.5px;padding:7px 9px;border-radius:7px;cursor:pointer`)}>{ac.name}</div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div onClick={g.toggleAddLinkDetail} style={S(`font-size:11.5px;font-weight:600;color:${ACCENT};cursor:pointer`)}>+ Vincular cliente</div>
+              </div>
+              <div>
+                <FLabel>Fluxo vinculado</FLabel>
+                <select value={d.flowId} onChange={d.onFlowIdChange} style={S(`width:100%;` + g.selFlowLink + `;margin-bottom:8px`)}>
+                  <option value="">Nenhum</option>
+                  {g.flowSelectOptions.map((fo) => <option key={fo.id} value={fo.id}>{fo.name}</option>)}
+                </select>
+                {d.flowName ? (
+                  <div onClick={d.onOpenFlow} className="hv-dim" style={S(`display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:${ACCENT};background:#eef1ff;border-radius:8px;padding:8px 12px;cursor:pointer`)}>
+                    <FlowIcon size={13} />
+                    Abrir {d.flowName}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderPrazos(g) {
+    return (
+      <div style={S(`padding:20px 22px;display:flex;flex-direction:column;gap:24px;height:100%;overflow:auto`)}>
+        {g.monthGroups.map((mg) => (
+          <div key={mg.key}>
+            <div style={S(`display:flex;align-items:center;gap:10px;margin-bottom:10px`)}>
+              <div style={S(`font-size:11.5px;font-weight:700;color:#6b6e78;letter-spacing:.06em;text-transform:uppercase`)}>{mg.label}</div>
+              <div style={S(`margin-left:auto;display:flex;gap:8px`)}>
+                <div onClick={mg.onAdd} className="hv-dim" style={S(`display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:${ACCENT};background:#eef1ff;border-radius:8px;padding:6px 12px;cursor:pointer`)}>+ Nova mudança</div>
+                <div onClick={mg.onDelGroup} title="Remover mês" className="hv-redbg" style={S(`width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#b3402e;cursor:pointer;border:1px solid #f0d5d0`)}>
+                  <svg width="13" height="13" viewBox="0 0 13 13"><path d="M2 3.5h9M5 3.5V2h3v1.5M3 3.5l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                </div>
+              </div>
+            </div>
+            <div style={S(`display:grid;grid-template-columns:repeat(2,1fr);gap:14px`)}>
+              {mg.cards.map((c) => (
+                <div key={c.id} style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px`)}>
+                  <div style={S(`display:flex;align-items:center;gap:8px`)}>
+                    <div style={S(c.dot)}></div>
+                    <div style={S(c.sevTag)}>{c.sevLabel}</div>
+                    <div onClick={c.onDel} title="Remover" className="hv-gray" style={S(`margin-left:auto;color:#c2c3c9;cursor:pointer;padding:2px`)}>
+                      <svg width="15" height="15" viewBox="0 0 15 15"><path d="M5.5 3.5l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                    </div>
+                  </div>
+                  {c.editing ? (
+                    <input value={c.titleVal} onChange={c.onTitleChange} onKeyDown={c.onTitleKey} autoFocus placeholder="Título da mudança — Enter para salvar" style={S(`width:100%;margin-top:10px;font:700 14.5px 'Instrument Sans',sans-serif;border:1.5px solid ${ACCENT};border-radius:8px;padding:7px 9px;outline:none`)} />
+                  ) : (
+                    <div style={S(`font-size:14.5px;font-weight:700;margin-top:9px;line-height:1.35;text-wrap:pretty`)}>{c.title}</div>
+                  )}
+                  {c.hasDesc ? <div style={S(`font-size:12px;color:#8a8d98;margin-top:6px;line-height:1.5;text-wrap:pretty`)}>{c.desc}</div> : null}
+                  <div style={S(`display:flex;align-items:center;gap:6px;margin-top:14px`)}>
+                    <svg width="12" height="12" viewBox="0 0 13 13" style={S(`color:#a0a3ad;flex:none`)}><rect x="1" y="2.5" width="11" height="9.5" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3"></rect><line x1="1" y1="5.3" x2="12" y2="5.3" stroke="currentColor" strokeWidth="1.3"></line></svg>
+                    <div style={S(`font-size:11.5px;color:#8a8d98;font-family:'JetBrains Mono',monospace`)}>{c.date}</div>
+                    {c.hasBadge ? <div style={S(c.badgeStyle)}>{c.badge}</div> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  renderFlowList(g) {
+    return (
+      <div style={S(`padding:20px 22px;height:100%;overflow:auto;display:flex;flex-direction:column;gap:16px`)}>
+        <div style={S(`display:flex;align-items:center`)}>
+          <div style={S(`font-size:13px;font-weight:700`)}>Fluxos</div>
+          <div onClick={g.createFlow} className="hv-btn" style={S(`margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:7px 14px;cursor:pointer`)}>+ Novo fluxo</div>
+        </div>
+        <div style={S(`display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px`)}>
+          {g.flowList.map((fl) => (
+            <div key={fl.id} onClick={fl.onOpen} className="hv-card" style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:18px;cursor:pointer;display:flex;flex-direction:column;gap:12px`)}>
+              <div style={S(`width:34px;height:34px;border-radius:9px;background:#eef1ff;display:grid;place-items:center;color:${ACCENT}`)}>
+                <FlowIcon size={16} />
+              </div>
+              <div style={S(`font-size:13.5px;font-weight:700;line-height:1.35;text-wrap:pretty`)}>{fl.name}</div>
+              <div style={S(`display:flex;align-items:center`)}>
+                <div style={S(`font-size:11px;color:#8a8d98`)}>{fl.nodeCount}</div>
+                <div onClick={fl.onDelete} title="Excluir fluxo" className="hv-danger" style={S(`margin-left:auto;color:#c2c3c9;cursor:pointer;padding:2px`)}><TrashIcon size={14} /></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  renderFlowCanvas(g) {
+    return (
+      <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+        <div style={S(`flex:none;display:flex;align-items:center;gap:10px;padding:10px 22px;background:#fff;border-bottom:1px solid #e7e7e3`)}>
+          <div onClick={g.goFlowList} className="hv-light" style={S(`width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;cursor:pointer;color:#4b4e58`)}>
+            <svg width="15" height="15" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+          </div>
+          <input className="fc hv-inbdr" value={g.activeFlowName} onChange={g.onFlowNameChange} style={S(`width:320px;flex:none;font-size:12.5px;font-weight:700;border:1px solid transparent;border-radius:6px;padding:5px 7px;outline:none`)} />
+          <div onClick={g.flowAddNode} className="hv-btn" style={S(`font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:6px 12px;cursor:pointer`)}>+ Nó</div>
+          <div style={S(`display:flex;gap:4px`)}>
+            <div onClick={g.zoomOut} className="hv-light" style={S(`width:26px;height:26px;border:1px solid #e2e2de;border-radius:7px;display:grid;place-items:center;cursor:pointer;color:#6b6e78`)}>−</div>
+            <div onClick={g.zoomReset} className="hv-light" style={S(`height:26px;padding:0 8px;border:1px solid #e2e2de;border-radius:7px;display:grid;place-items:center;cursor:pointer;font-size:11px;color:#6b6e78;font-family:'JetBrains Mono',monospace`)}>{g.zoomLabel}</div>
+            <div onClick={g.zoomIn} className="hv-light" style={S(`width:26px;height:26px;border:1px solid #e2e2de;border-radius:7px;display:grid;place-items:center;cursor:pointer;color:#6b6e78`)}>+</div>
+          </div>
+          <div style={S(`margin-left:auto;font-size:11.5px;color:#8a8d98`)}>Arraste nós · puxe do ponto <span style={S(`color:${ACCENT};font-weight:700`)}>●</span> para conectar · 2× clique no fundo cria nó · clique na linha remove</div>
+        </div>
+        <div ref={this.canvasRef} onMouseDown={g.cvDown} onMouseMove={g.cvMove} onMouseUp={g.cvUp} onMouseLeave={g.cvUp} onDoubleClick={g.cvDbl} style={S(g.cvStyle)}>
+          <div style={S(g.worldStyle)}>
+            <svg width="1" height="1" style={S(`position:absolute;left:0;top:0;overflow:visible`)}>
+              {g.edges.map((ed) => (
+                <path key={ed.key} d={ed.d} fill="none" stroke="#b9bcc8" strokeWidth="2" onClick={ed.onDel} className="edge"></path>
+              ))}
+              {g.pendingEdge ? <path d={g.pendingD} fill="none" stroke={ACCENT} strokeWidth="2" strokeDasharray="5 4"></path> : null}
+            </svg>
+            {g.nodes.map((n) => (
+              <div key={n.id} onMouseDown={n.onDown} onMouseUp={n.onUp} style={S(n.style)}>
+                <div style={S(`display:flex;align-items:center;gap:7px;margin-bottom:5px`)}>
+                  <div style={S(n.dot)}></div>
+                  <div style={S(`font-size:12px;font-weight:700;line-height:1.3;flex:1`)}>{n.title}</div>
+                </div>
+                <div style={S(`font-size:10.5px;color:#7c7f89;line-height:1.45;text-wrap:pretty`)}>{n.desc}</div>
+                <div onMouseDown={n.portDown} title="Conectar" className="hv-port" style={S(n.portStyle)}></div>
+              </div>
+            ))}
+          </div>
+          {g.selNode ? (
+            <div style={S(`position:absolute;top:14px;right:14px;width:250px;background:#fff;border:1px solid #e2e2de;border-radius:12px;padding:14px;box-shadow:0 8px 24px rgba(20,20,30,.1);display:flex;flex-direction:column;gap:8px;z-index:20`)}>
+              <div style={S(`font-size:10.5px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>Editar nó</div>
+              <input value={g.selTitle} onChange={g.onSelTitle} style={S(`border:1px solid #e2e2de;border-radius:8px;padding:8px 10px;font:600 12.5px 'Instrument Sans',sans-serif;outline:none`)} />
+              <textarea value={g.selDesc} onChange={g.onSelDesc} rows={3} style={S(`border:1px solid #e2e2de;border-radius:8px;padding:8px 10px;font:400 11.5px 'Instrument Sans',sans-serif;outline:none;resize:none`)}></textarea>
+              <div style={S(`display:flex;gap:6px`)}>
+                {g.nodeColors.map((nc) => <div key={nc.color} onClick={nc.pick} style={S(nc.sw)}></div>)}
+              </div>
+              <div style={S(`display:flex;gap:8px;margin-top:2px`)}>
+                <div onClick={g.delNode} className="hv-redbg" style={S(`font-size:11.5px;font-weight:600;color:#b3402e;cursor:pointer;padding:6px 10px;border-radius:7px;border:1px solid #f0d5d0`)}>Excluir</div>
+                <div onClick={g.closePanel} className="hv-light" style={S(`font-size:11.5px;font-weight:600;color:#6b6e78;cursor:pointer;padding:6px 10px;border-radius:7px;border:1px solid #e2e2de;margin-left:auto`)}>Fechar</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  renderClientList(g) {
+    return (
+      <div style={S(`padding:20px 22px;display:flex;flex-direction:column;gap:14px`)}>
+        <div style={S(`display:flex;gap:8px`)}>
+          {g.cliFilters.map((cf) => <div key={cf.label} onClick={cf.go} className="hv-card" style={S(cf.style)}>{cf.label}</div>)}
+          <div onClick={g.goAddClient} className="hv-btn" style={S(`margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:7px 14px;cursor:pointer`)}>+ Adicionar cliente</div>
+        </div>
+        <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;overflow:hidden`)}>
+          <div style={S(`display:grid;grid-template-columns:2fr 1fr 1fr 1.4fr 90px;gap:12px;padding:11px 18px;background:#fafaf8;border-bottom:1px solid #ececea;font-size:10.5px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>
+            <div>Cliente</div><div>Regime</div><div>Responsável</div><div>Adequação à reforma</div><div>Status</div>
+          </div>
+          {g.clients.map((c) => (
+            <div key={c.id} onClick={c.onOpen} className="hv-row" style={S(`display:grid;grid-template-columns:2fr 1fr 1fr 1.4fr 90px;gap:12px;align-items:center;padding:13px 18px;border-bottom:1px solid #f0f0ed;cursor:pointer`)}>
+              <div>
+                <div style={S(`font-size:13px;font-weight:600`)}>{c.name}</div>
+                <div style={S(`font-size:11px;color:#8a8d98`)}>{c.setor}</div>
+              </div>
+              <div style={S(`font-size:12px;color:#4b4e58`)}>{c.regime}</div>
+              <div style={S(`display:flex;align-items:center;gap:7px`)}><div style={S(c.avStyle)}>{c.respIni}</div><span style={S(`font-size:12px;color:#4b4e58`)}>{c.respName}</span></div>
+              <div style={S(`display:flex;align-items:center;gap:10px`)}>
+                <div style={S(`flex:1;height:6px;background:#f0f0ed;border-radius:99px;overflow:hidden`)}><div style={S(c.barStyle)}></div></div>
+                <div style={S(`font-size:11px;color:#6b6e78;font-family:'JetBrains Mono',monospace;width:34px;text-align:right`)}>{c.pct}%</div>
+              </div>
+              <div style={S(c.badge)}>{c.status}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  renderClientAdd(g) {
+    return (
+      <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+        <BackBar onBack={g.goClientList} title="Adicionar cliente" />
+        <div style={S(`flex:1;overflow:auto;padding:26px 28px 60px`)}>
+          <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start`)}>
+            <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+              <div style={S(`font-size:11px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.06em`)}>Cadastro individual</div>
+              <div>
+                <FLabel>Nome do cliente</FLabel>
+                <input className="fc" value={g.newClientName} onChange={g.onNewClientName} placeholder="Razão social" autoFocus style={S(INP)} />
+              </div>
+              <div>
+                <FLabel>Setor</FLabel>
+                <input className="fc" value={g.newClientSetor} onChange={g.onNewClientSetor} placeholder="Ex.: Varejo alimentar" style={S(INP)} />
+              </div>
+              <div>
+                <FLabel>Regime tributário</FLabel>
+                <select value={g.newClientRegime} onChange={g.onNewClientRegime} style={S(`width:100%;` + g.selRegime)}>
+                  <option value="Simples Nacional">Simples Nacional</option>
+                  <option value="Lucro Presumido">Lucro Presumido</option>
+                  <option value="Lucro Real">Lucro Real</option>
+                </select>
+              </div>
+              <div onClick={g.submitSingleClient} className="hv-btn" style={S(`align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 16px;border-radius:8px;cursor:pointer;margin-top:4px`)}>Adicionar cliente</div>
+            </div>
+            <BatchPanel
+              desc={<span>Cole uma linha por cliente — <b>Nome, Setor, Regime</b> (setor e regime são opcionais) — ou importe um arquivo .csv.</span>}
+              onFile={g.onImportFile} text={g.batchText} onText={g.onBatchTextChange}
+              placeholder={"Padaria Sol Nascente, Alimentação, Simples Nacional\nTransportes Rio Verde, Logística, Lucro Real"}
+              count={g.batchCount} noun="cliente(s)" onConfirm={g.confirmBatch} confirmLabel={`Adicionar ${g.batchCount} clientes`} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderClientDetail(g) {
+    const cd = g.clientDetail;
+    return (
+      <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+        <BackBar onBack={g.goClientList} title={cd.name} />
+        <div style={S(`flex:1;overflow:auto;padding:24px 28px 60px`)}>
+          <div style={S(`display:flex;align-items:center;gap:14px;margin-bottom:22px`)}>
+            <div style={S(cd.avStyle)}>{cd.ini}</div>
+            <div>
+              <div style={S(`font-size:17px;font-weight:700;letter-spacing:-.01em`)}>{cd.name}</div>
+              <div style={S(`font-size:12px;color:#8a8d98;margin-top:2px`)}>{cd.setor} · {cd.regime}</div>
+            </div>
+            <div style={S(cd.badge + ';margin-left:auto')}>{cd.status}</div>
+          </div>
+          <div style={S(`display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px`)}>
+            <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px`)}>
+              <div style={S(`font-size:11px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>Adequação à reforma</div>
+              <div style={S(`font-size:24px;font-weight:700;margin-top:8px`)}>{cd.pct}%</div>
+            </div>
+            <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px`)}>
+              <div style={S(`font-size:11px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>Tarefas vinculadas</div>
+              <div style={S(`font-size:24px;font-weight:700;margin-top:8px`)}>{cd.taskCount}</div>
+            </div>
+            <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px`)}>
+              <div style={S(`font-size:11px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>Em aberto</div>
+              <div style={S(`font-size:24px;font-weight:700;margin-top:8px;color:#c98a2e`)}>{cd.openCount}</div>
+            </div>
+            <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px`)}>
+              <div style={S(`font-size:11px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>Concluídas</div>
+              <div style={S(`font-size:24px;font-weight:700;margin-top:8px;color:#0e7a6f`)}>{cd.doneCount}</div>
+            </div>
+          </div>
+          <div style={S(`display:flex;align-items:center;gap:10px;margin-bottom:8px`)}>
+            <div style={S(cd.respAv)}>{cd.respIni}</div>
+            <div style={S(`font-size:12.5px;color:#4b4e58`)}>Responsável: <b>{cd.respName}</b></div>
+          </div>
+          <div style={S(`height:1px;background:#f0f0ed;margin:14px 0`)}></div>
+          <div style={S(`font-size:13px;font-weight:700;margin-bottom:12px`)}>Tarefas deste cliente</div>
+          <div style={S(`display:flex;flex-direction:column;gap:8px`)}>
+            {g.clientDetailTasks.map((t) => (
+              <div key={t.id} onClick={t.onOpen} className="hv-card" style={S(`display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e7e7e3;border-radius:11px;padding:12px 16px;cursor:pointer`)}>
+                <div style={S(t.catBadge)}>{t.category}</div>
+                <div style={S(`font-size:12.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}>{t.title}</div>
+                <div style={S(`flex:0 0 100px;height:6px;background:#f0f0ed;border-radius:99px;overflow:hidden`)}><div style={S(t.barStyle)}></div></div>
+                <div style={S(`font-size:11px;color:#6b6e78;font-family:'JetBrains Mono',monospace;width:34px;text-align:right`)}>{t.pct}%</div>
+                <div style={S(t.statusStyle)}>{t.statusLabel}</div>
+              </div>
+            ))}
+            {cd.noTasks ? <div style={S(`font-size:12px;color:#a0a3ad;font-style:italic`)}>Nenhuma tarefa vinculada a este cliente ainda.</div> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderTeam(g) {
+    if (g.teamViewAdd) {
+      return (
+        <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+          <BackBar onBack={g.goTeamList} title="Convidar pessoa" />
+          <div style={S(`flex:1;overflow:auto;padding:24px 22px 60px`)}>
+            <div style={S(`max-width:420px;display:flex;flex-direction:column;gap:14px`)}>
+              <div>
+                <FLabel>Nome</FLabel>
+                <input className="fc" value={g.newMemberName} onChange={g.onNewMemberName} placeholder="Nome completo" autoFocus style={S(INP)} />
+              </div>
+              <div>
+                <FLabel>E-mail</FLabel>
+                <input className="fc" value={g.newMemberEmail} onChange={g.onNewMemberEmail} type="email" placeholder="pessoa@escritorio.com.br" style={S(INP)} />
+              </div>
+              <div>
+                <FLabel>Cargo</FLabel>
+                <input className="fc" value={g.newMemberCargo} onChange={g.onNewMemberCargo} placeholder="Ex.: Analista fiscal" style={S(INP)} />
+              </div>
+              <div>
+                <FLabel>Permissão</FLabel>
+                <select value={g.newMemberPermissao} onChange={g.onNewMemberPermissao} style={S(g.selPermissao)}>
+                  <option value="Admin">Admin — acesso total</option>
+                  <option value="Membro">Membro — acesso à operação</option>
+                </select>
+              </div>
+              <div>
+                <FLabel>Cor do avatar</FLabel>
+                <div style={S(`display:flex;gap:8px`)}>
+                  {g.memberColorSwatches.map((sw) => <div key={sw.color} onClick={sw.pick} style={S(sw.style)}></div>)}
+                </div>
+              </div>
+              <div onClick={g.submitMember} className="hv-btn" style={S(`align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 16px;border-radius:8px;cursor:pointer;margin-top:4px`)}>Convidar pessoa</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={S(`padding:20px 22px;display:flex;flex-direction:column;gap:16px`)}>
+        <div style={S(`display:flex;align-items:center`)}>
+          <div style={S(`font-size:13px;font-weight:700`)}>Equipe</div>
+          <div style={S(`font-size:11.5px;color:#8a8d98;margin-left:10px`)}>{g.teamList.length} pessoas com acesso ao escritório</div>
+          <div onClick={g.goAddMember} className="hv-btn" style={S(`margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:7px 14px;cursor:pointer`)}>+ Convidar pessoa</div>
+        </div>
+        <div style={S(`display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px`)}>
+          {g.teamList.map((m) => (
+            <div key={m.id} style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px`)}>
+              <div style={S(`display:flex;align-items:center;gap:10px`)}>
+                <div style={S(m.avStyle)}>{m.ini}</div>
+                <div style={S(`flex:1;min-width:0`)}>
+                  <div style={S(`font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}>{m.name}</div>
+                  <div style={S(`font-size:11px;color:#8a8d98;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}>{m.cargo}</div>
+                </div>
+                {m.canRemove ? (
+                  <div onClick={m.onRemove} title="Remover" className="hv-danger" style={S(`color:#c2c3c9;cursor:pointer;padding:2px`)}><TrashIcon size={14} /></div>
+                ) : null}
+                {m.locked ? (
+                  <div title="Atribuído a tarefas ou clientes" style={S(`color:#c2c3c9;padding:2px`)}>
+                    <svg width="13" height="13" viewBox="0 0 13 13"><rect x="2.5" y="6" width="8" height="5.5" rx="1.3" fill="none" stroke="currentColor" strokeWidth="1.3"></rect><path d="M4 6V4a2.5 2.5 0 015 0v2" fill="none" stroke="currentColor" strokeWidth="1.3"></path></svg>
+                  </div>
+                ) : null}
+              </div>
+              <div style={S(`height:1px;background:#f0f0ed`)}></div>
+              <div style={S(`font-size:11.5px;color:#6b6e78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}>{m.email || '—'}</div>
+              <div style={S(m.permBadge)}>{m.permissao}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  renderIbs(g) {
+    if (g.isIbsAdd) {
+      return (
+        <div style={S(`height:100%;display:flex;flex-direction:column`)}>
+          <BackBar onBack={g.goIbsList} title="Adicionar dado do IBS/CBS" />
+          <div style={S(`flex:1;overflow:auto;padding:26px 28px 60px`)}>
+            <div style={S(`display:flex;gap:8px;margin-bottom:22px`)}>
+              <div onClick={g.pickIbsAddCst} style={S(g.ibsAddTypeCstStyle)}>CST</div>
+              <div onClick={g.pickIbsAddCclass} style={S(g.ibsAddTypeCclassStyle)}>cClassTrib</div>
+              <div onClick={g.pickIbsAddProduto} style={S(g.ibsAddTypeProdutoStyle)}>Tributação de produto</div>
+            </div>
+            {g.isIbsAddCst ? (
+              <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start`)}>
+                <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+                  <div style={S(`font-size:11px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.06em`)}>Cadastro individual</div>
+                  <div>
+                    <FLabel>Código CST</FLabel>
+                    <input className="fc" value={g.newCstCode} onChange={g.onNewCstCode} placeholder="Ex.: 200" autoFocus style={S(INP + `;font-family:'JetBrains Mono',monospace`)} />
+                  </div>
+                  <div>
+                    <FLabel>Descrição</FLabel>
+                    <input className="fc" value={g.newCstDesc} onChange={g.onNewCstDesc} placeholder="Descrição do CST" style={S(INP)} />
+                  </div>
+                  <div onClick={g.submitCst} className="hv-btn" style={S(`align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 16px;border-radius:8px;cursor:pointer;margin-top:4px`)}>Adicionar CST</div>
+                </div>
+                <BatchPanel
+                  desc={<span>Cole uma linha por código — <b>CST, Descrição</b> — ou importe um arquivo .csv.</span>}
+                  onFile={g.onIbsImportFile} text={g.ibsBatchText} onText={g.onIbsBatchTextChange}
+                  placeholder={"200, Alíquota zero\n210, Alíquota reduzida"}
+                  count={g.ibsBatchCount} noun="registro(s)" onConfirm={g.confirmIbsBatch} confirmLabel={`Adicionar ${g.ibsBatchCount} registros`} />
+              </div>
+            ) : null}
+            {g.isIbsAddCclass ? (
+              <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start`)}>
+                <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+                  <div style={S(`font-size:11px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.06em`)}>Cadastro individual</div>
+                  <div>
+                    <FLabel>Código cClassTrib</FLabel>
+                    <input className="fc" value={g.newCclassCode} onChange={g.onNewCclassCode} placeholder="Ex.: 200001" autoFocus style={S(INP + `;font-family:'JetBrains Mono',monospace`)} />
+                  </div>
+                  <div>
+                    <FLabel>Descrição</FLabel>
+                    <input className="fc" value={g.newCclassDesc} onChange={g.onNewCclassDesc} placeholder="Descrição do cClassTrib" style={S(INP)} />
+                  </div>
+                  <div onClick={g.submitCclass} className="hv-btn" style={S(`align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 16px;border-radius:8px;cursor:pointer;margin-top:4px`)}>Adicionar cClassTrib</div>
+                </div>
+                <BatchPanel
+                  desc={<span>Cole uma linha por código — <b>cClassTrib, Descrição</b> — ou importe um arquivo .csv.</span>}
+                  onFile={g.onIbsImportFile} text={g.ibsBatchText} onText={g.onIbsBatchTextChange}
+                  placeholder={"200001, Cesta básica nacional\n210001, Medicamentos — redução de 60%"}
+                  count={g.ibsBatchCount} noun="registro(s)" onConfirm={g.confirmIbsBatch} confirmLabel={`Adicionar ${g.ibsBatchCount} registros`} />
+              </div>
+            ) : null}
+            {g.isIbsAddProduto ? (
+              <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start`)}>
+                <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+                  <div style={S(`font-size:11px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.06em`)}>Cadastro individual</div>
+                  <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:12px`)}>
+                    <div>
+                      <FLabel>NCM</FLabel>
+                      <input className="fc" value={g.newProdNcm} onChange={g.onNewProdNcm} placeholder="Ex.: 1006.30.11" autoFocus style={S(INP + `;font-family:'JetBrains Mono',monospace`)} />
+                    </div>
+                    <div>
+                      <FLabel>Descrição</FLabel>
+                      <input className="fc" value={g.newProdDesc} onChange={g.onNewProdDesc} placeholder="Descrição do produto" style={S(INP)} />
+                    </div>
+                  </div>
+                  <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:12px`)}>
+                    <div>
+                      <FLabel>CST</FLabel>
+                      <select value={g.newProdCst} onChange={g.onNewProdCst} style={S(`width:100%;` + g.selRec)}>
+                        {g.cstRows.map((r, i) => <option key={i} value={r.code}>{r.code} — {r.desc}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <FLabel>cClassTrib</FLabel>
+                      <select value={g.newProdCclass} onChange={g.onNewProdCclass} style={S(`width:100%;` + g.selCategory)}>
+                        {g.cclassRows.map((r, i) => <option key={i} value={r.code}>{r.code} — {r.desc}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:12px`)}>
+                    <div>
+                      <FLabel>Alíquota IBS</FLabel>
+                      <input className="fc" value={g.newProdAliqIbs} onChange={g.onNewProdAliqIbs} placeholder="Ex.: 17,7%" style={S(INP)} />
+                    </div>
+                    <div>
+                      <FLabel>Alíquota CBS</FLabel>
+                      <input className="fc" value={g.newProdAliqCbs} onChange={g.onNewProdAliqCbs} placeholder="Ex.: 8,8%" style={S(INP)} />
+                    </div>
+                  </div>
+                  <div style={S(`display:grid;grid-template-columns:1fr 1fr;gap:12px`)}>
+                    <div>
+                      <FLabel>Redução IBS</FLabel>
+                      <input className="fc" value={g.newProdRedIbs} onChange={g.onNewProdRedIbs} placeholder="Ex.: 60%" style={S(INP)} />
+                    </div>
+                    <div>
+                      <FLabel>Redução CBS</FLabel>
+                      <input className="fc" value={g.newProdRedCbs} onChange={g.onNewProdRedCbs} placeholder="Ex.: 60%" style={S(INP)} />
+                    </div>
+                  </div>
+                  <div onClick={g.submitProduto} className="hv-btn" style={S(`align-self:flex-start;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};padding:9px 16px;border-radius:8px;cursor:pointer;margin-top:4px`)}>Adicionar produto</div>
+                </div>
+                <BatchPanel
+                  desc={<span>Cole uma linha por produto — <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou importe um arquivo .csv.</span>}
+                  onFile={g.onIbsImportFile} text={g.ibsBatchText} onText={g.onIbsBatchTextChange}
+                  placeholder={"1006.30.11, Arroz beneficiado, 200, 200001, 17,7%, 8,8%, 100%, 100%"}
+                  count={g.ibsBatchCount} noun="registro(s)" onConfirm={g.confirmIbsBatch} confirmLabel={`Adicionar ${g.ibsBatchCount} registros`} />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={S(`padding:20px 22px;height:100%;overflow:auto;display:flex;flex-direction:column;gap:18px`)}>
+        <div style={S(`display:flex;align-items:center;gap:8px`)}>
+          <div onClick={g.pickIbsDados} style={S(g.ibsTabDadosStyle)}>Dados do IBS e CBS</div>
+          <div onClick={g.pickIbsProdutos} style={S(g.ibsTabProdutosStyle)}>Tributação dos produtos</div>
+          <div onClick={g.goAddIbs} className="hv-btn" style={S(`margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:${ACCENT};border-radius:8px;padding:7px 14px;cursor:pointer`)}>+ Adicionar dado</div>
+        </div>
+        {g.isIbsDados ? (
+          <div style={S(`display:flex;flex-direction:column;gap:20px`)}>
+            <div>
+              <div style={S(`font-size:13px;font-weight:700;margin-bottom:4px`)}>CSTs do IBS e CBS</div>
+              <div style={S(`font-size:11.5px;color:#8a8d98;margin-bottom:10px`)}>Código de Situação Tributária — Informe Técnico 2025.002 (RFB), principais códigos</div>
+              <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;overflow:hidden`)}>
+                <div style={S(`display:grid;grid-template-columns:120px 1fr;gap:12px;padding:10px 18px;background:#fafaf8;border-bottom:1px solid #ececea;font-size:10.5px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>
+                  <div>CST</div><div>Descrição</div>
+                </div>
+                {g.cstRows.map((r, i) => (
+                  <div key={i} className="hv-row" style={S(`display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;padding:10px 18px;border-bottom:1px solid #f0f0ed`)}>
+                    <div style={S(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${ACCENT}`)}>{r.code}</div>
+                    <div style={S(`font-size:12.5px;color:#33363f`)}>{r.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={S(`font-size:13px;font-weight:700;margin-bottom:4px`)}>cClassTrib do IBS e CBS</div>
+              <div style={S(`font-size:11.5px;color:#8a8d98;margin-bottom:10px`)}>Código de Classificação Tributária — os 3 primeiros dígitos coincidem com o CST</div>
+              <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;overflow:hidden`)}>
+                <div style={S(`display:grid;grid-template-columns:120px 1fr;gap:12px;padding:10px 18px;background:#fafaf8;border-bottom:1px solid #ececea;font-size:10.5px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em`)}>
+                  <div>cClassTrib</div><div>Descrição</div>
+                </div>
+                {g.cclassRows.map((r, i) => (
+                  <div key={i} className="hv-row" style={S(`display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;padding:10px 18px;border-bottom:1px solid #f0f0ed`)}>
+                    <div style={S(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#7c3aed`)}>{r.code}</div>
+                    <div style={S(`font-size:12.5px;color:#33363f`)}>{r.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {g.isIbsProdutos ? (
+          <div>
+            <div style={S(`font-size:13px;font-weight:700;margin-bottom:4px`)}>Tributação dos produtos</div>
+            <div style={S(`font-size:11.5px;color:#8a8d98;margin-bottom:10px`)}>Alíquotas de referência do período de transição — consulte a legislação estadual/municipal vigente</div>
+            <div style={S(`background:#fff;border:1px solid #e7e7e3;border-radius:12px;overflow:auto`)}>
+              <div style={S(`display:grid;grid-template-columns:110px 1.6fr 70px 90px 90px 90px 100px 100px;gap:10px;padding:10px 18px;background:#fafaf8;border-bottom:1px solid #ececea;font-size:10px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap`)}>
+                <div>NCM</div><div>Descrição</div><div>CST</div><div>cClassTrib</div><div>Alíq. IBS</div><div>Alíq. CBS</div><div>Red. IBS</div><div>Red. CBS</div>
+              </div>
+              {g.produtoRows.map((r, i) => (
+                <div key={i} className="hv-row" style={S(`display:grid;grid-template-columns:110px 1.6fr 70px 90px 90px 90px 100px 100px;gap:10px;align-items:center;padding:11px 18px;border-bottom:1px solid #f0f0ed`)}>
+                  <div style={S(`font-family:'JetBrains Mono',monospace;font-size:12px;color:#4b4e58`)}>{r.ncm}</div>
+                  <div style={S(`font-size:12.5px;font-weight:500`)}>{r.desc}</div>
+                  <div style={S(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${ACCENT}`)}>{r.cst}</div>
+                  <div style={S(`font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#7c3aed`)}>{r.cclass}</div>
+                  <div style={S(`font-size:12px;color:#33363f`)}>{r.aliqIbs}</div>
+                  <div style={S(`font-size:12px;color:#33363f`)}>{r.aliqCbs}</div>
+                  <div style={S(`font-size:12px;color:#0e7a6f;font-weight:600`)}>{r.redIbs}</div>
+                  <div style={S(`font-size:12px;color:#0e7a6f;font-weight:600`)}>{r.redCbs}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  renderKb(g) {
+    return (
+      <div style={S(`height:100%;display:grid;grid-template-columns:320px 1fr`)}>
+        <div style={S(`border-right:1px solid #e7e7e3;background:#fff;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:6px`)}>
+          <div style={S(`font-size:11px;font-weight:700;color:#6b6e78;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px 6px`)}>Legislação e notas</div>
+          {g.notes.map((nt) => (
+            <div key={nt.key} onClick={nt.onSel} className="hv-light" style={S(nt.rowStyle)}>
+              <div style={S(`font-size:12.5px;font-weight:600;line-height:1.35`)}>{nt.title}</div>
+              <div style={S(`font-size:11px;color:#8a8d98;margin-top:3px;line-height:1.4`)}>{nt.sub}</div>
+            </div>
+          ))}
+        </div>
+        <div style={S(`overflow:auto;padding:32px 44px;max-width:760px`)}>
+          <div style={S(`display:flex;gap:6px;margin-bottom:14px`)}>
+            {g.noteTags.map((tg, i) => <div key={i} style={S(`font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:#eef1ff;color:#4653d6`)}>{tg}</div>)}
+          </div>
+          <h1 style={S(`font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px;text-wrap:pretty`)}>{g.noteTitle}</h1>
+          <div style={S(`font-size:12px;color:#8a8d98;margin-bottom:22px;font-family:'JetBrains Mono',monospace`)}>{g.noteMeta}</div>
+          <div style={S(`display:flex;flex-direction:column;gap:14px`)}>
+            {g.noteParas.map((pp, i) => (
+              <p key={i} style={S(`font-size:14px;line-height:1.7;color:#33363f;margin:0;text-wrap:pretty`)}>{pp}</p>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  renderApp(g) {
+    return (
+      <div style={S(`display:flex;height:100vh;overflow:hidden`)}>
+        <aside style={S(`width:232px;flex:none;background:#ffffff;border-right:1px solid #e7e7e3;display:flex;flex-direction:column;padding:18px 12px 14px`)}>
+          <div style={S(`display:flex;align-items:center;gap:10px;padding:0 10px 18px`)}>
+            <div style={S(`width:30px;height:30px;border-radius:8px;background:${ACCENT};display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px`)}>R</div>
+            <div>
+              <div style={S(`font-weight:700;font-size:13.5px;letter-spacing:-.01em`)}>{g.brandName}</div>
+              <div style={S(`font-size:10.5px;color:#8a8d98`)}>Gestão da transição</div>
+            </div>
+          </div>
+          <nav style={S(`display:flex;flex-direction:column;gap:2px`)}>
+            <div onClick={g.tabDash.go} className="hv-nav" style={S(g.tabDash.style)}><svg width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor"></rect><rect x="8.5" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".45"></rect><rect x="1" y="8.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".45"></rect><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.5" fill="currentColor"></rect></svg>Visão geral</div>
+            <div onClick={g.tabTasks.go} className="hv-nav" style={S(g.tabTasks.style)}><svg width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="1" width="13" height="13" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6"></rect><path d="M4.5 7.5l2 2 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"></path></svg>Tarefas</div>
+            <div onClick={g.tabCal.go} className="hv-nav" style={S(g.tabCal.style)}><svg width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="2.5" width="13" height="11.5" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.6"></rect><line x1="1" y1="6" x2="14" y2="6" stroke="currentColor" strokeWidth="1.6"></line></svg>Prazos</div>
+            <div onClick={g.tabFlow.go} className="hv-nav" style={S(g.tabFlow.style)}><FlowIcon />Fluxos</div>
+            <div onClick={g.tabCli.go} className="hv-nav" style={S(g.tabCli.style)}><svg width="15" height="15" viewBox="0 0 15 15"><circle cx="5.5" cy="5" r="2.6" fill="currentColor"></circle><path d="M1.5 13c.5-3 2.3-4.3 4-4.3s3.5 1.3 4 4.3z" fill="currentColor"></path><circle cx="11" cy="5.5" r="2" fill="currentColor" opacity=".45"></circle></svg>Clientes</div>
+            <div onClick={g.tabTeam.go} className="hv-nav" style={S(g.tabTeam.style)}><svg width="15" height="15" viewBox="0 0 15 15"><circle cx="5.5" cy="4.2" r="2.3" fill="currentColor"></circle><circle cx="11" cy="5" r="1.8" fill="currentColor" opacity=".5"></circle><path d="M1.3 13c.4-2.8 2.1-4 4.2-4s3.8 1.2 4.2 4z" fill="currentColor"></path><path d="M10 9.3c1.6.2 2.6 1.3 2.9 3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".6"></path></svg>Equipe</div>
+            <div onClick={g.tabIbs.go} className="hv-nav" style={S(g.tabIbs.style)}><svg width="15" height="15" viewBox="0 0 15 15"><rect x="1" y="1" width="13" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5"></rect><line x1="1" y1="5.3" x2="14" y2="5.3" stroke="currentColor" strokeWidth="1.3"></line><line x1="5.3" y1="5.3" x2="5.3" y2="14" stroke="currentColor" strokeWidth="1.3"></line><line x1="9.6" y1="5.3" x2="9.6" y2="14" stroke="currentColor" strokeWidth="1.3"></line></svg>IBS e CBS</div>
+            <div onClick={g.tabKb.go} className="hv-nav" style={S(g.tabKb.style)}><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 2.5A1.5 1.5 0 013.5 1H13v11.5H3.5A1.5 1.5 0 002 14z" fill="none" stroke="currentColor" strokeWidth="1.6"></path><line x1="2" y1="11.5" x2="13" y2="11.5" stroke="currentColor" strokeWidth="1.6"></line></svg>Base de conhecimento</div>
+          </nav>
+          <div style={S(`margin-top:auto;padding:12px 10px;background:#f7f7f4;border-radius:10px`)}>
+            <div style={S(`font-size:10.5px;font-weight:600;color:#6b6e78;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px`)}>Fase atual</div>
+            <div style={S(`font-size:12.5px;font-weight:600`)}>{g.phaseNow.title}</div>
+            <div style={S(`font-size:11px;color:#8a8d98;margin-top:2px`)}>{g.phaseNow.desc}</div>
+            <div style={S(`height:5px;background:#e7e7e3;border-radius:99px;margin-top:8px;overflow:hidden`)}><div style={S(`width:${g.yearPct}%;height:100%;background:${ACCENT};border-radius:99px`)}></div></div>
+            <div style={S(`font-size:10px;color:#8a8d98;margin-top:4px;font-family:'JetBrains Mono',monospace`)}>{g.yearPct}% do ano decorrido</div>
+          </div>
+          <div onClick={g.logout} className="hv-danger" style={S(`margin-top:10px;font-size:11px;font-weight:600;color:#8a8d98;cursor:pointer;padding:4px 10px`)}>Sair da conta</div>
+        </aside>
+        <main style={S(`flex:1;display:flex;flex-direction:column;min-width:0`)}>
+          <header style={S(`height:56px;flex:none;background:#fff;border-bottom:1px solid #e7e7e3;display:flex;align-items:center;gap:14px;padding:0 22px`)}>
+            <div style={S(`font-size:15px;font-weight:700;letter-spacing:-.01em`)}>{g.tabTitle}</div>
+            <div style={S(`font-size:11px;color:#8a8d98;font-family:'JetBrains Mono',monospace`)}>{g.headerDate}</div>
+            <div style={S(`margin-left:auto;display:flex;align-items:center;gap:10px`)}>
+              <div style={S(`display:flex`)}>
+                {g.team.map((p) => <div key={p.id} style={S(p.avStyle)} title={p.name}>{p.ini}</div>)}
+              </div>
+            </div>
+          </header>
+          <div style={S(`flex:1;overflow:auto;min-height:0`)}>
+            {g.isDash ? this.renderDash(g) : null}
+            {g.isTasks && g.viewList ? this.renderTaskList(g) : null}
+            {g.isTasks && g.viewCreate ? this.renderTaskCreate(g) : null}
+            {g.isTasks && g.viewDetail ? this.renderTaskDetail(g) : null}
+            {g.isTasks && !g.viewList && !g.viewCreate && !g.viewDetail ? this.renderTaskList(g) : null}
+            {g.isCal ? this.renderPrazos(g) : null}
+            {g.isFlow && g.flowViewList ? this.renderFlowList(g) : null}
+            {g.isFlow && g.flowViewCanvas ? this.renderFlowCanvas(g) : null}
+            {g.isFlow && !g.flowViewList && !g.flowViewCanvas ? this.renderFlowList(g) : null}
+            {g.isCli && g.clientViewList ? this.renderClientList(g) : null}
+            {g.isCli && g.clientViewAdd ? this.renderClientAdd(g) : null}
+            {g.isCli && g.clientViewDetail ? this.renderClientDetail(g) : null}
+            {g.isCli && !g.clientViewList && !g.clientViewAdd && !g.clientViewDetail ? this.renderClientList(g) : null}
+            {g.isTeam ? this.renderTeam(g) : null}
+            {g.isIbs ? this.renderIbs(g) : null}
+            {g.isKb ? this.renderKb(g) : null}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  render() {
+    const g = this.renderVals();
+    if (g.isLogin) return this.renderLogin(g);
+    if (g.isSignup) return this.renderSignup(g);
+    return this.renderApp(g);
+  }
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
