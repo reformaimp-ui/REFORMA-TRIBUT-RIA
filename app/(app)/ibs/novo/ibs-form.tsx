@@ -67,19 +67,28 @@ function Batch({
   type: string; placeholder: string; desc: React.ReactNode; cstSet: Set<string>; cclassSet: Set<string>;
 }) {
   // Valida linhas contra as tabelas de referência antes de enviar (só quando há
-  // códigos cadastrados — caso contrário não bloqueia a primeira carga).
+  // códigos cadastrados — caso contrário não bloqueia a primeira carga) e sinaliza
+  // chaves duplicadas dentro do próprio arquivo (mantém a 1ª ocorrência, rejeita as
+  // demais) em vez de deixá-las se sobrescrever silenciosamente no upsert.
   const validate = (cells: string[][]): Validation => {
     const valid: string[][] = [];
     const rejected: Rejected[] = [];
+    const seen = new Set<string>();
     for (const c of cells) {
       const cst = String(c[type === "vinculo" ? 0 : 2] ?? "").trim();
       const cclass = String(c[type === "vinculo" ? 1 : 3] ?? "").trim();
       if (type === "produto") {
+        const ncm = String(c[0] ?? "").trim();
+        if (seen.has(ncm)) { rejected.push({ row: c, reason: `NCM ${ncm} duplicado no arquivo` }); continue; }
         if (cstSet.size && cst && !cstSet.has(cst)) { rejected.push({ row: c, reason: `CST ${cst} inexistente` }); continue; }
         if (cclassSet.size && cclass && !cclassSet.has(cclass)) { rejected.push({ row: c, reason: `cClassTrib ${cclass} inexistente` }); continue; }
+        seen.add(ncm);
       } else if (type === "vinculo") {
+        const key = `${cst}|${cclass}`;
+        if (seen.has(key)) { rejected.push({ row: c, reason: `Vínculo ${cst} × ${cclass} duplicado no arquivo` }); continue; }
         if (cstSet.size && !cstSet.has(cst)) { rejected.push({ row: c, reason: `CST ${cst} inexistente` }); continue; }
         if (cclassSet.size && !cclassSet.has(cclass)) { rejected.push({ row: c, reason: `cClassTrib ${cclass} inexistente` }); continue; }
+        seen.add(key);
       }
       valid.push(c);
     }
@@ -99,7 +108,8 @@ function Batch({
       format="xlsx"
       chunkImport={(cells, startPos) => importChunk(type, cells, startPos)}
       validate={type === "produto" || type === "vinculo" ? validate : undefined}
-      onFinish={() => finishImport(tab)}
+      onFinish={() => { void finishImport(); }}
+      redirectTo={`/ibs?tab=${tab}`}
     />
   );
 }

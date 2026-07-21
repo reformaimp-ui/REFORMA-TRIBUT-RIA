@@ -134,7 +134,6 @@ export async function importChunk(type: string, cells: string[][], startPos: num
   return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
 }
 
-export async function finishImport(tab: "dados" | "produtos") {
+export async function finishImport() {
   revalidatePath("/ibs");
-  redirect(`/ibs?tab=${tab}`);
 }

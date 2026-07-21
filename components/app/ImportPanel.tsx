@@ -31,6 +31,7 @@ export function ImportPanel({
   chunkImport,
   validate,
   onFinish,
+  redirectTo,
 }: {
   action: (fd: FormData) => void;
   pending: boolean;
@@ -45,7 +46,8 @@ export function ImportPanel({
   // Modo lote: quando fornecido, o envio é feito em chunks com progresso e relatório.
   chunkImport?: (cells: string[][], startPos: number) => Promise<ChunkResult>;
   validate?: (cells: string[][]) => Validation;
-  onFinish?: () => Promise<void> | void;
+  onFinish?: () => Promise<void> | void; // só invalida cache — não navega
+  redirectTo?: string; // link mostrado no relatório para ver o resultado
 }) {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<string[][]>([]);
@@ -84,25 +86,29 @@ export function ImportPanel({
     setReport(null);
     setProgress(0);
     let inserted = 0;
+    let failed = false;
     try {
       for (let i = 0; i < valid.length; i += CHUNK_SIZE) {
         const chunk = valid.slice(i, i + CHUNK_SIZE);
         const res = await chunkImport(chunk, i);
         if (res.error) {
           setReport({ inserted, rejected, error: `Lote ${i / CHUNK_SIZE + 1}: ${res.error}` });
-          setRunning(false);
-          return;
+          failed = true;
+          break;
         }
         inserted += res.inserted;
         setProgress(Math.min(1, (i + chunk.length) / Math.max(1, valid.length)));
       }
-      setReport({ inserted, rejected });
-      setRunning(false);
-      if (onFinish) await onFinish();
     } catch (e) {
       setReport({ inserted, rejected, error: e instanceof Error ? e.message : "Falha na importação." });
-      setRunning(false);
+      failed = true;
     }
+    setRunning(false);
+    if (failed) return;
+    setReport({ inserted, rejected });
+    // Invalida o cache do servidor (não navega — a navegação, se houver, é feita
+    // pelo link "redirectTo" abaixo, fora do try/catch de erro do import).
+    if (onFinish) onFinish();
   };
 
   const readFile = (f: File) => {
@@ -348,6 +354,9 @@ export function ImportPanel({
                 {report.rejected.length > 200 ? <div style={{ color: "#a0a3ad", paddingTop: 4 }}>…e mais {report.rejected.length - 200}</div> : null}
               </div>
             </details>
+          ) : null}
+          {!report.error && redirectTo ? (
+            <a href={redirectTo} style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 600, color: ACCENT }}>Ver lista atualizada →</a>
           ) : null}
         </div>
       ) : null}
