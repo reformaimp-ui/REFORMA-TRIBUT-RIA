@@ -83,7 +83,10 @@ export function PrimeiroAcessoForm() {
     const { error } = await supabase.auth.updateUser({ password });
     setPending(false);
     if (error) return setError("Não foi possível definir a senha. Tente novamente.");
-    router.push("/dashboard");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    router.push(user?.app_metadata?.portal ? "/pesquisa" : "/dashboard");
     router.refresh();
   };
 

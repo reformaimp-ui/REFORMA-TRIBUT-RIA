@@ -11,8 +11,8 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   if (!email || !password) return { error: "Informe e-mail e senha." };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "E-mail ou senha inválidos." };
 
-  redirect("/dashboard");
+  redirect(data.user?.app_metadata?.portal ? "/pesquisa" : "/dashboard");
 }

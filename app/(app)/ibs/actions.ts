@@ -45,7 +45,7 @@ export async function addProduto(_p: IbsState, fd: FormData): Promise<IbsState> 
   const supabase = await createClient();
   const { error } = await supabase.from("produto_rows").upsert(
     {
-      office_id: office.id, ncm, descr: String(fd.get("descr") || "").trim(),
+      office_id: office.id, ncm, ncm_digits: onlyDigits(ncm), descr: String(fd.get("descr") || "").trim(),
       cst: String(fd.get("cst") || ""), cclass: String(fd.get("cclass") || ""),
       aliq_ibs: String(fd.get("aliq_ibs") || ""), aliq_cbs: String(fd.get("aliq_cbs") || ""),
       red_ibs: String(fd.get("red_ibs") || ""), red_cbs: String(fd.get("red_cbs") || ""),
@@ -103,13 +103,16 @@ export async function importChunk(type: string, cells: string[][], startPos: num
     // Chave real: um NCM pode ter várias tributações (CST/cClassTrib diferentes).
     const rows = dedupeBy(
       cells
-        .map((c, i) => ({
-          office_id: oid, ncm: String(c[0] ?? "").trim(), descr: String(c[1] ?? "").trim(),
-          cst: String(c[2] ?? "").trim(), cclass: String(c[3] ?? "").trim(),
-          aliq_ibs: String(c[4] ?? "").trim(), aliq_cbs: String(c[5] ?? "").trim(),
-          red_ibs: String(c[6] ?? "").trim(), red_cbs: String(c[7] ?? "").trim(),
-          position: startPos + i,
-        }))
+        .map((c, i) => {
+          const ncm = String(c[0] ?? "").trim();
+          return {
+            office_id: oid, ncm, ncm_digits: onlyDigits(ncm), descr: String(c[1] ?? "").trim(),
+            cst: String(c[2] ?? "").trim(), cclass: String(c[3] ?? "").trim(),
+            aliq_ibs: String(c[4] ?? "").trim(), aliq_cbs: String(c[5] ?? "").trim(),
+            red_ibs: String(c[6] ?? "").trim(), red_cbs: String(c[7] ?? "").trim(),
+            position: startPos + i,
+          };
+        })
         .filter((r) => r.ncm),
       (r) => `${r.ncm}|${r.cst}|${r.cclass}`,
     );
