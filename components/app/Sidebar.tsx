@@ -19,6 +19,7 @@ const NAV_TOP: { seg: TabKey; label: string; icon: string }[] = [
 const NAV_BOTTOM: { seg: TabKey; label: string; icon: string }[] = [
   { seg: "ibs", label: "IBS e CBS", icon: "ibs" },
   { seg: "base-conhecimento", label: "Base de conhecimento", icon: "kb" },
+  { seg: "arquivos", label: "Arquivos", icon: "files" },
   { seg: "configuracoes", label: "Configurações", icon: "settings" },
 ];
 
@@ -94,6 +95,18 @@ function Icon({ name }: { name: string }) {
         <svg width="15" height="15" viewBox="0 0 15 15">
           <path d="M2 2.5A1.5 1.5 0 013.5 1H13v11.5H3.5A1.5 1.5 0 002 14z" fill="none" stroke="currentColor" strokeWidth="1.6" />
           <line x1="2" y1="11.5" x2="13" y2="11.5" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      );
+    case "files":
+      return (
+        <svg width="15" height="15" viewBox="0 0 15 15">
+          <path
+            d="M1.5 4A1.5 1.5 0 013 2.5h3l1.3 1.7H12A1.5 1.5 0 0113.5 5.7v6.3A1.5 1.5 0 0112 13.5H3A1.5 1.5 0 011.5 12z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
         </svg>
       );
     default:
