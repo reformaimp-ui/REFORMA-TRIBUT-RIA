@@ -1,5 +1,3 @@
-import { ACCENT } from "@/lib/design";
-
 export function AuthHero({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div
@@ -31,16 +29,15 @@ export function AuthHero({ title, subtitle }: { title: string; subtitle: string 
             width: 30,
             height: 30,
             borderRadius: 8,
-            background: ACCENT,
+            background: "#fff",
             display: "grid",
             placeItems: "center",
-            fontWeight: 700,
-            fontSize: 14,
           }}
         >
-          R
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Imperform" width={20} height={20} />
         </div>
-        <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-.01em" }}>Reforma 2033</div>
+        <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-.01em" }}>Imperform</div>
       </div>
       <div style={{ position: "relative", maxWidth: 400 }}>
         <div
@@ -81,10 +78,10 @@ export function AuthHero({ title, subtitle }: { title: string; subtitle: string 
         </div>
         <div style={{ paddingLeft: 22 }}>
           <div style={{ fontSize: 19, fontWeight: 700, fontFamily: "var(--font-jetbrains)" }}>
-            100%
+            NCM · CST
           </div>
           <div style={{ fontSize: 11, color: "#8d8fa0", marginTop: 4 }}>
-            Substitui PIS/Cofins e ICMS/ISS
+            Pesquisa de tributação por produto
           </div>
         </div>
       </div>

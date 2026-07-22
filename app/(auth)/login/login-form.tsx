@@ -47,9 +47,9 @@ export function LoginForm() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <div style={{ fontSize: 11.5, fontWeight: 600, color: "#6b6e78" }}>Senha</div>
-              <div style={{ fontSize: 11.5, color: ACCENT, cursor: "pointer" }}>
+              <Link href="/esqueci-senha" style={{ fontSize: 11.5, color: ACCENT }}>
                 Esqueci minha senha
-              </div>
+              </Link>
             </div>
             <input className="fc" name="password" type="password" placeholder="••••••••" style={INP} />
           </div>

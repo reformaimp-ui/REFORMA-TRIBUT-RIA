@@ -1,4 +1,4 @@
-# Reforma 2033 — Gestão da transição tributária
+# Imperform — Gestão da transição tributária
 
 Aplicativo para escritórios de contabilidade acompanharem a transição da reforma tributária
 (EC 132/2023 · LC 214/2025): tarefas por cliente, prazos, fluxos, equipe, tabelas de IBS/CBS

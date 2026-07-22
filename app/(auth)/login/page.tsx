@@ -6,7 +6,7 @@ export default function LoginPage() {
     <div style={{ display: "flex", minHeight: "100vh", background: "#fff" }}>
       <AuthHero
         title="Bem-vindo de volta ao seu escritório."
-        subtitle="Acompanhe prazos, tarefas e a transição para o novo modelo tributário — tudo em um só lugar, do ano-teste de 2026 à vigência plena em 2033."
+        subtitle="Pesquise a tributação de produtos e serviços na Reforma e acompanhe a regularização de cada cliente do seu escritório em um só lugar."
       />
       <LoginForm />
     </div>

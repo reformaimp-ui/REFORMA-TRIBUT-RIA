@@ -7,12 +7,12 @@ import { ACCENT, av, isoDate, tipoColor, tipoLabel, toBRshort } from "@/lib/desi
 export const dynamic = "force-dynamic";
 
 const PHASES = [
-  { year: "2026", title: "Ano-teste", desc: "CBS 0,9% + IBS 0,1% destacados na NF-e; recolhimento dispensado", from: 2020, to: 2026 },
-  { year: "2027", title: "CBS integral", desc: "Extinção de PIS/Cofins; Imposto Seletivo em vigor; IPI zerado (exceto ZFM)", from: 2027, to: 2027 },
-  { year: "2028", title: "Consolidação", desc: "CBS e IS plenos; IBS mantém alíquota de teste", from: 2028, to: 2028 },
-  { year: "2029–32", title: "Transição IBS", desc: "ICMS e ISS reduzidos gradualmente; IBS sobe na mesma proporção", from: 2029, to: 2032 },
-  { year: "2033", title: "Regime pleno", desc: "Extinção de ICMS e ISS; IVA dual em vigência integral", from: 2033, to: 2077 },
-  { year: "2078", title: "Fim da compensação", desc: "Encerramento dos ajustes federativos de receita", from: 2078, to: 9999, dim: true },
+  { year: "2023", title: "Promulgação", desc: "Promulgação da reforma tributária", from: 2020, to: 2023 },
+  { year: "2024", title: "Regulamentação", desc: "Aprovação de leis complementares e ordinárias para regulamentar a reforma", from: 2024, to: 2025 },
+  { year: "2026", title: "Ano-teste", desc: "Aplicação da alíquota única de 1% (0,9% para a CBS e 0,1% para o IBS). Os índices apurados servirão de base para a transição", from: 2026, to: 2026 },
+  { year: "2027", title: "CBS integral", desc: "CBS entra em vigor na totalidade e são extintos PIS e Cofins", from: 2027, to: 2028 },
+  { year: "2029–32", title: "Transição IBS", desc: "Alíquotas de ICMS e ISS serão reduzidas gradualmente, e a do IBS ampliada", from: 2029, to: 2032 },
+  { year: "2033", title: "Regime pleno", desc: "IBS entra em vigor total e são extintos ICMS e ISS", from: 2033, to: 9999 },
 ];
 
 export default async function DashboardPage() {
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
           {PHASES.map((ph, i) => {
             const on = yr >= ph.from && yr <= ph.to;
             return (
-              <div key={i} style={{ border: `1px solid ${on ? ACCENT : "#ececea"}`, background: on ? "#f7f8ff" : "#fafaf8", borderRadius: 10, padding: 12, opacity: ph.dim ? 0.55 : 1 }}>
+              <div key={i} style={{ border: `1px solid ${on ? ACCENT : "#ececea"}`, background: on ? "#f7f8ff" : "#fafaf8", borderRadius: 10, padding: 12 }}>
                 <div style={{ display: "inline-block", fontFamily: "var(--font-jetbrains)", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6, color: on ? "#fff" : "#5b5f6b", background: on ? ACCENT : "#ececea" }}>{ph.year}</div>
                 <div style={{ fontSize: 12, fontWeight: 600, marginTop: 6 }}>{ph.title}</div>
                 <div style={{ fontSize: 11, color: "#7c7f89", marginTop: 3, lineHeight: 1.45, textWrap: "pretty" }}>{ph.desc}</div>

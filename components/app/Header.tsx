@@ -20,7 +20,7 @@ const TITLES: Record<string, string> = {
 export function Header({ members }: { members: Member[] }) {
   const pathname = usePathname();
   const seg = pathname.split("/")[1] || "dashboard";
-  const title = TITLES[seg] ?? "Reforma 2033";
+  const title = TITLES[seg] ?? "Imperform";
 
   return (
     <header

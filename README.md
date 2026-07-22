@@ -1,4 +1,4 @@
-# Reforma 2033 — SaaS de gestão da transição tributária
+# Imperform — SaaS de gestão da transição tributária
 
 App Next.js (App Router) + Supabase (Postgres, Auth, RLS) para escritórios de contabilidade
 acompanharem a reforma tributária (CBS · IBS · IS) — tarefas por cliente, prazos, fluxos,

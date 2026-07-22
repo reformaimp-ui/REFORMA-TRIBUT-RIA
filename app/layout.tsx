@@ -17,7 +17,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Reforma 2033 — Gestão da transição tributária",
+  title: "Imperform — Gestão da transição tributária",
   description:
     "Acompanhe prazos, tarefas e a adequação de clientes à reforma tributária (CBS, IBS e IS).",
 };

@@ -207,15 +207,14 @@ export function Sidebar({ office, member }: { office: Office; member: Member }) 
             width: 30,
             height: 30,
             borderRadius: 8,
-            background: ACCENT,
+            background: "#fff",
+            border: "1px solid #e7e7e3",
             display: "grid",
             placeItems: "center",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 14,
           }}
         >
-          R
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Imperform" width={20} height={20} />
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 13.5, letterSpacing: "-.01em" }}>{office.name}</div>
