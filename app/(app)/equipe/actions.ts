@@ -25,7 +25,8 @@ export async function addMember(_prev: MemberFormState, formData: FormData): Pro
   if (!name) return { error: "Informe o nome da pessoa." };
   if (!email) return { error: "Informe o e-mail da pessoa." };
 
-  const { office } = await getContext();
+  const { office, member: caller } = await getContext();
+  if (caller.role !== "admin") return { error: "Apenas administradores podem convidar pessoas." };
 
   let admin;
   try {
@@ -64,7 +65,31 @@ export async function addMember(_prev: MemberFormState, formData: FormData): Pro
 export async function removeMember(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return;
+  const { member: caller } = await getContext();
+  if (caller.role !== "admin") return;
   const supabase = await createClient();
   await supabase.from("members").delete().eq("id", id);
   revalidatePath("/equipe");
+}
+
+export type PermissionsFormState = { error?: string };
+
+export async function updateMemberPermissions(_prev: PermissionsFormState, formData: FormData): Promise<PermissionsFormState> {
+  const id = String(formData.get("id") || "");
+  if (!id) return { error: "ID inválido." };
+  const { member: caller } = await getContext();
+  if (caller.role !== "admin") return { error: "Apenas administradores podem alterar permissões." };
+
+  let permissions: unknown;
+  try {
+    permissions = JSON.parse(String(formData.get("permissions") || "{}"));
+  } catch {
+    return { error: "Permissões inválidas." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("members").update({ permissions }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/equipe");
+  return {};
 }

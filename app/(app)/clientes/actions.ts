@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
+import { canDo } from "@/lib/permissions";
 import { iniOf, PALETTE } from "@/lib/design";
 
 export type ClientFormState = { error?: string };
@@ -23,6 +24,7 @@ function parseRows(text: string): Row[] {
 async function insertClients(rows: Row[]) {
   if (!rows.length) return;
   const { office, member } = await getContext();
+  if (!canDo(member, "clientes", "create")) return;
   const supabase = await createClient();
   const { count } = await supabase
     .from("clients")

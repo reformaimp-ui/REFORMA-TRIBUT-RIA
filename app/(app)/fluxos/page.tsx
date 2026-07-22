@@ -1,11 +1,19 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getContext } from "@/lib/data";
 import { ACCENT } from "@/lib/design";
+import { canDo, canViewTab } from "@/lib/permissions";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
 import { createFlow, deleteFlow } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function FluxosPage() {
+  const { member } = await getContext();
+  if (!canViewTab(member, "fluxos")) redirect("/dashboard");
+  const canCreate = canDo(member, "fluxos", "create");
+  const canDelete = canDo(member, "fluxos", "delete");
   const supabase = await createClient();
   const { data: flows } = await supabase.from("flows").select("id,name").order("created_at");
   const { data: nodes } = await supabase.from("flow_nodes").select("flow_id");
@@ -16,9 +24,11 @@ export default async function FluxosPage() {
     <div style={{ padding: "20px 22px", height: "100%", overflow: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center" }}>
         <div style={{ fontSize: 13, fontWeight: 700 }}>Fluxos</div>
-        <form action={createFlow} style={{ marginLeft: "auto" }}>
-          <button type="submit" className="hv-btn" style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px", border: "none", cursor: "pointer" }}>+ Novo fluxo</button>
-        </form>
+        {canCreate ? (
+          <form action={createFlow} style={{ marginLeft: "auto" }}>
+            <button type="submit" className="hv-btn" style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px", border: "none", cursor: "pointer" }}>+ Novo fluxo</button>
+          </form>
+        ) : null}
       </div>
       <div className="stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 14 }}>
         {(flows ?? []).map((f: { id: string; name: string }) => {
@@ -32,12 +42,16 @@ export default async function FluxosPage() {
                 <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.35, textWrap: "pretty" }}>{f.name}</div>
                 <div style={{ fontSize: 11, color: "#8a8d98" }}>{n} {n === 1 ? "nó" : "nós"}</div>
               </Link>
-              <form action={deleteFlow} style={{ position: "absolute", right: 12, bottom: 14 }}>
+              <ConfirmForm
+                action={deleteFlow}
+                message={`Excluir o fluxo "${f.name}"? Isso remove todas as etapas e conexões.`}
+                style={{ position: "absolute", right: 12, bottom: 14, display: canDelete ? undefined : "none" }}
+              >
                 <input type="hidden" name="id" value={f.id} />
                 <button type="submit" title="Excluir fluxo" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 2, background: "none", border: "none" }}>
                   <svg width="14" height="14" viewBox="0 0 15 15"><path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </button>
-              </form>
+              </ConfirmForm>
             </div>
           );
         })}

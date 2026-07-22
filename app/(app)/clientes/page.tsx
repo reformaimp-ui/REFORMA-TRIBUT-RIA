@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { ACCENT, av, STATUS_COLOR } from "@/lib/design";
+import { canDo, canViewTab } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,9 @@ export default async function ClientesPage({
 }: {
   searchParams: Promise<{ regime?: string }>;
 }) {
-  const { members } = await getContext();
+  const { member, members } = await getContext();
+  if (!canViewTab(member, "clientes")) redirect("/dashboard");
+  const canCreate = canDo(member, "clientes", "create");
   const sp = await searchParams;
   const filter = sp.regime && REGIMES.includes(sp.regime) ? sp.regime : "Todos";
   const byId = Object.fromEntries(members.map((m) => [m.id, m]));
@@ -54,21 +58,23 @@ export default async function ClientesPage({
             </Link>
           );
         })}
-        <Link
-          href="/clientes/novo"
-          className="hv-btn"
-          style={{
-            marginLeft: "auto",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#fff",
-            background: ACCENT,
-            borderRadius: 8,
-            padding: "7px 14px",
-          }}
-        >
-          + Adicionar cliente
-        </Link>
+        {canCreate ? (
+          <Link
+            href="/clientes/novo"
+            className="hv-btn"
+            style={{
+              marginLeft: "auto",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#fff",
+              background: ACCENT,
+              borderRadius: 8,
+              padding: "7px 14px",
+            }}
+          >
+            + Adicionar cliente
+          </Link>
+        ) : null}
       </div>
       <div className="stagger" style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "hidden" }}>
         <div

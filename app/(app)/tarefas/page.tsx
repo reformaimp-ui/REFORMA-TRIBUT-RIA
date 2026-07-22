@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getContext } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { loadTaskList } from "@/lib/tasks";
 import { ACCENT } from "@/lib/design";
+import { canDo, canViewTab } from "@/lib/permissions";
 import { ClientFilterSelect } from "./client-filter";
 import { TaskCard } from "./task-card";
 
@@ -13,7 +15,9 @@ export default async function TarefasPage({
 }: {
   searchParams: Promise<{ pessoa?: string; cliente?: string }>;
 }) {
-  const { members } = await getContext();
+  const { member, members } = await getContext();
+  if (!canViewTab(member, "tarefas")) redirect("/dashboard");
+  const canCreate = canDo(member, "tarefas", "create");
   const sp = await searchParams;
   const pessoa = sp.pessoa || "all";
   const cliente = sp.cliente || "all";
@@ -66,21 +70,23 @@ export default async function TarefasPage({
           pessoa={pessoa}
           cliente={cliente}
         />
-        <Link
-          href="/tarefas/nova"
-          className="hv-btn"
-          style={{
-            marginLeft: "auto",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#fff",
-            background: ACCENT,
-            borderRadius: 8,
-            padding: "7px 14px",
-          }}
-        >
-          + Nova tarefa
-        </Link>
+        {canCreate ? (
+          <Link
+            href="/tarefas/nova"
+            className="hv-btn"
+            style={{
+              marginLeft: "auto",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#fff",
+              background: ACCENT,
+              borderRadius: 8,
+              padding: "7px 14px",
+            }}
+          >
+            + Nova tarefa
+          </Link>
+        ) : null}
       </div>
 
       <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>

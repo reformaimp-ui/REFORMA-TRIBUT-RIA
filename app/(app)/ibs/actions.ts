@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
+import { canDo } from "@/lib/permissions";
 
 export type IbsState = { error?: string };
 
@@ -17,7 +18,8 @@ async function nextPos(table: string, officeId: string) {
 export async function addCst(_p: IbsState, fd: FormData): Promise<IbsState> {
   const code = String(fd.get("code") || "").trim();
   if (!code) return { error: "Informe o código." };
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
   const supabase = await createClient();
   await supabase.from("cst_rows").insert({ office_id: office.id, code, descr: String(fd.get("descr") || "").trim(), position: await nextPos("cst_rows", office.id) });
   revalidatePath("/ibs");
@@ -27,7 +29,8 @@ export async function addCst(_p: IbsState, fd: FormData): Promise<IbsState> {
 export async function addCclass(_p: IbsState, fd: FormData): Promise<IbsState> {
   const code = String(fd.get("code") || "").trim();
   if (!code) return { error: "Informe o código." };
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
   const supabase = await createClient();
   await supabase.from("cclass_rows").insert({ office_id: office.id, code, descr: String(fd.get("descr") || "").trim(), position: await nextPos("cclass_rows", office.id) });
   revalidatePath("/ibs");
@@ -37,7 +40,8 @@ export async function addCclass(_p: IbsState, fd: FormData): Promise<IbsState> {
 export async function addProduto(_p: IbsState, fd: FormData): Promise<IbsState> {
   const ncm = String(fd.get("ncm") || "").trim();
   if (!ncm) return { error: "Informe o NCM." };
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
   const supabase = await createClient();
   const { error } = await supabase.from("produto_rows").upsert(
     {
@@ -58,7 +62,8 @@ export async function addCstLink(_p: IbsState, fd: FormData): Promise<IbsState> 
   const cst = String(fd.get("cst") || "").trim();
   const cclass = String(fd.get("cclass") || "").trim();
   if (!cst || !cclass) return { error: "Informe o CST e o cClassTrib." };
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
   const supabase = await createClient();
   const { error } = await supabase
     .from("cst_cclass_links")
@@ -89,7 +94,8 @@ function dedupeBy<T>(rows: T[], key: (r: T) => string): T[] {
  */
 export async function importChunk(type: string, cells: string[][], startPos: number): Promise<ImportResult> {
   if (!Array.isArray(cells) || !cells.length) return { inserted: 0 };
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { inserted: 0, error: "Você não tem permissão para isso." };
   const supabase = await createClient();
   const oid = office.id;
 

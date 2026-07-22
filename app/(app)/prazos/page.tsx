@@ -1,9 +1,19 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getContext } from "@/lib/data";
+import { canDo, canViewTab } from "@/lib/permissions";
 import { PrazosBoard, type ChangeRow } from "./prazos-board";
 
 export const dynamic = "force-dynamic";
 
 export default async function PrazosPage() {
+  const { member } = await getContext();
+  if (!canViewTab(member, "prazos")) redirect("/dashboard");
+  const perms = {
+    create: canDo(member, "prazos", "create"),
+    edit: canDo(member, "prazos", "edit"),
+    delete: canDo(member, "prazos", "delete"),
+  };
   const supabase = await createClient();
   const [{ data: chgs, error: chgsError }, { data: pmonths, error: monthsError }] = await Promise.all([
     supabase.from("changes").select("id,month,severity,title,description,date,badge,content").order("month"),
@@ -26,5 +36,5 @@ export default async function PrazosPage() {
     ...new Set([...changes.map((c) => c.month), ...((pmonths ?? []) as { month: string }[]).map((m) => m.month)]),
   ].sort();
 
-  return <PrazosBoard months={months} changes={changes} />;
+  return <PrazosBoard months={months} changes={changes} perms={perms} />;
 }

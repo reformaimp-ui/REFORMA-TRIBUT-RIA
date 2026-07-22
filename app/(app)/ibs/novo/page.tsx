@@ -1,10 +1,15 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getContext } from "@/lib/data";
+import { canDo } from "@/lib/permissions";
 import { BackBar } from "@/components/app/BackBar";
 import { IbsForm } from "./ibs-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoIbsPage({ searchParams }: { searchParams: Promise<{ tipo?: string }> }) {
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "create")) redirect("/ibs");
   const sp = await searchParams;
   const supabase = await createClient();
   const [{ data: cst }, { data: cclass }] = await Promise.all([

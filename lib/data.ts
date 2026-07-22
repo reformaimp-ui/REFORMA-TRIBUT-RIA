@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { Permissions } from "@/lib/permissions";
 
 export type Member = {
   id: string;
@@ -11,6 +12,7 @@ export type Member = {
   cargo: string | null;
   role: string;
   avatar_url: string | null;
+  permissions: Permissions | null;
 };
 
 export type Office = { id: string; name: string; cnpj: string | null; accent: string };
@@ -44,7 +46,7 @@ export const getContext = cache(async (): Promise<AppContext> => {
   let [{ data: members }, { data: offices }] = await Promise.all([
     supabase
       .from("members")
-      .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url")
+      .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions")
       .order("created_at"),
     supabase.from("offices").select("id,name,cnpj,accent"),
   ]);
@@ -64,7 +66,7 @@ export const getContext = cache(async (): Promise<AppContext> => {
       [{ data: members }, { data: offices }] = await Promise.all([
         supabase
           .from("members")
-          .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url")
+          .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions")
           .order("created_at"),
         supabase.from("offices").select("id,name,cnpj,accent"),
       ]);

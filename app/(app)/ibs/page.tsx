@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getContext } from "@/lib/data";
 import { ACCENT } from "@/lib/design";
+import { canDo, canViewTab } from "@/lib/permissions";
 import { CstTable } from "@/components/app/CstTable";
 import { CclassTable } from "@/components/app/CclassTable";
 import { ProdutoTable, type ProdRow } from "@/components/app/ProdutoTable";
@@ -19,6 +22,9 @@ function tabStyle(active: boolean): React.CSSProperties {
 const PAGE_SIZE = 100;
 
 export default async function IbsPage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string; page?: string }> }) {
+  const { member } = await getContext();
+  if (!canViewTab(member, "ibs")) redirect("/dashboard");
+  const canCreate = canDo(member, "ibs", "create");
   const sp = await searchParams;
   const tab = sp.tab === "produtos" ? "produtos" : sp.tab === "arvore-ncm" ? "arvore-ncm" : "dados";
   const q = (sp.q ?? "").trim();
@@ -61,13 +67,15 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
         <Link href="/ibs?tab=dados" style={tabStyle(tab === "dados")}>Dados do IBS e CBS</Link>
         <Link href="/ibs?tab=produtos" style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
         <Link href="/ibs?tab=arvore-ncm" style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
-        <Link
-          href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
-          className="hv-btn"
-          style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px" }}
-        >
-          + Adicionar dado
-        </Link>
+        {canCreate ? (
+          <Link
+            href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
+            className="hv-btn"
+            style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px" }}
+          >
+            + Adicionar dado
+          </Link>
+        ) : null}
       </div>
 
       {tab === "dados" ? (

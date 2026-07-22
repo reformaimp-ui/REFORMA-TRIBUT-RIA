@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
+import { canDo } from "@/lib/permissions";
 
 export async function addNote(fd: FormData): Promise<string | null> {
   const title = String(fd.get("title") || "").trim();
   if (!title) return null;
   const content = String(fd.get("content") ?? "");
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "base-conhecimento", "create")) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("notes")
@@ -24,6 +26,8 @@ export async function updateNote(fd: FormData) {
   const title = String(fd.get("title") || "").trim();
   if (!id || !title) return;
   const content = String(fd.get("content") ?? "");
+  const { member } = await getContext();
+  if (!canDo(member, "base-conhecimento", "edit")) return;
   const supabase = await createClient();
   await supabase.from("notes").update({ title, content }).eq("id", id);
   revalidatePath("/base-conhecimento");
@@ -32,6 +36,8 @@ export async function updateNote(fd: FormData) {
 export async function deleteNote(fd: FormData) {
   const id = String(fd.get("id") || "");
   if (!id) return;
+  const { member } = await getContext();
+  if (!canDo(member, "base-conhecimento", "delete")) return;
   const supabase = await createClient();
   await supabase.from("notes").delete().eq("id", id);
   revalidatePath("/base-conhecimento");

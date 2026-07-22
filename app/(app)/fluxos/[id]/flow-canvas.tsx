@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ACCENT, NODE_COLORS } from "@/lib/design";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
 import { addEdge, addNode, deleteEdge, deleteFlow, deleteNode, moveNode, renameFlow, updateNode } from "../actions";
 
 type Node = { key: string; x: number; y: number; title: string; desc: string; color: string };
@@ -103,6 +104,7 @@ export function FlowCanvas({
     void deleteEdge(fd({ flowId, source: e.source, target: e.target }));
   };
   const removeNode = (key: string) => {
+    if (!window.confirm("Excluir esta etapa e suas conexões?")) return;
     setNodes((ns) => ns.filter((n) => n.key !== key));
     setEdges((es) => es.filter((e) => e.source !== key && e.target !== key));
     setSelKey(null);
@@ -134,12 +136,12 @@ export function FlowCanvas({
           <div onClick={() => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)))} className="hv-light" style={{ width: 26, height: 26, border: "1px solid #e2e2de", borderRadius: 7, display: "grid", placeItems: "center", cursor: "pointer", color: "#6b6e78" }}>+</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 11.5, color: "#8a8d98" }}>Arraste nós · puxe do ponto <span style={{ color: ACCENT, fontWeight: 700 }}>●</span> para conectar · 2× clique cria nó · clique na linha remove</div>
-        <form action={deleteFlow}>
+        <ConfirmForm action={deleteFlow} message={`Excluir o fluxo "${name}"? Isso remove todas as etapas e conexões.`}>
           <input type="hidden" name="id" value={flowId} />
           <button type="submit" title="Excluir fluxo" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 4, background: "none", border: "none" }}>
             <svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
-        </form>
+        </ConfirmForm>
       </div>
 
       <div

@@ -21,9 +21,11 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function KbBoard({ notes }: { notes: NoteRow[] }) {
+type Perms = { create: boolean; edit: boolean; delete: boolean };
+
+export function KbBoard({ notes, perms }: { notes: NoteRow[]; perms: Perms }) {
   const [selId, setSelId] = useState<string | null>(notes[0]?.id ?? null);
-  const [mode, setMode] = useState<"view" | "edit" | "new">(notes.length ? "view" : "new");
+  const [mode, setMode] = useState<"view" | "edit" | "new">(notes.length ? "view" : perms.create ? "new" : "view");
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
   const [pending, startTransition] = useTransition();
@@ -61,6 +63,7 @@ export function KbBoard({ notes }: { notes: NoteRow[] }) {
   };
   const remove = () => {
     if (!sel || pending) return;
+    if (!window.confirm(`Excluir a nota "${sel.title}"?`)) return;
     const fd = new FormData();
     fd.set("id", sel.id);
     startTransition(async () => {
@@ -79,9 +82,11 @@ export function KbBoard({ notes }: { notes: NoteRow[] }) {
       <div style={{ borderRight: "1px solid #e7e7e3", background: "#fff", overflow: "auto", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "2px 8px 8px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em" }}>Notas</div>
-          <button onClick={startNew} className="hv-btn" style={{ ...BTN, marginLeft: "auto", color: "#fff", background: ACCENT, padding: "6px 12px", fontSize: 11.5 }}>
-            + Nova nota
-          </button>
+          {perms.create ? (
+            <button onClick={startNew} className="hv-btn" style={{ ...BTN, marginLeft: "auto", color: "#fff", background: ACCENT, padding: "6px 12px", fontSize: 11.5 }}>
+              + Nova nota
+            </button>
+          ) : null}
         </div>
         <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {notes.map((n) => {
@@ -164,12 +169,16 @@ export function KbBoard({ notes }: { notes: NoteRow[] }) {
         <div style={{ overflow: "auto", padding: "28px 44px", maxWidth: 860 }} className="animate-fadeup">
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-.02em", margin: 0, textWrap: "pretty", flex: 1 }}>{sel.title}</h1>
-            <button onClick={startEdit} className="hv-light" style={{ ...BTN, flex: "none", color: "#4b4e58", background: "#fff", border: "1.5px solid #e2e2de" }}>
-              Editar
-            </button>
-            <button onClick={remove} className="hv-redbg" style={{ ...BTN, flex: "none", color: "#b3402e", background: "#fff", border: "1.5px solid #f0d5d0" }}>
-              Excluir
-            </button>
+            {perms.edit ? (
+              <button onClick={startEdit} className="hv-light" style={{ ...BTN, flex: "none", color: "#4b4e58", background: "#fff", border: "1.5px solid #e2e2de" }}>
+                Editar
+              </button>
+            ) : null}
+            {perms.delete ? (
+              <button onClick={remove} className="hv-redbg" style={{ ...BTN, flex: "none", color: "#b3402e", background: "#fff", border: "1.5px solid #f0d5d0" }}>
+                Excluir
+              </button>
+            ) : null}
           </div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 20, fontFamily: "var(--font-jetbrains)" }}>{fmtDate(sel.created_at)}</div>
           {sel.content.trim() ? (

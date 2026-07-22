@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ACCENT, av, catMeta, CATEGORY_OPTIONS, progColor } from "@/lib/design";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
 import {
   addComment,
   addSubtask,
@@ -97,14 +98,14 @@ export function TaskDetail({
           </svg>
         </button>
         <div style={{ fontSize: 13, fontWeight: 700 }}>Tarefa</div>
-        <form action={deleteTask} style={{ marginLeft: "auto" }}>
+        <ConfirmForm action={deleteTask} message={`Excluir a tarefa "${task.title}"?`} style={{ marginLeft: "auto" }}>
           <input type="hidden" name="id" value={task.id} />
           <button type="submit" title="Excluir tarefa" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 4, background: "none", border: "none" }}>
             <svg width="16" height="16" viewBox="0 0 16 16">
               <path d="M2.5 4h11M6 4V2.3h4V4M4 4l.8 10h6.4l.8-10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-        </form>
+        </ConfirmForm>
       </div>
 
       <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>

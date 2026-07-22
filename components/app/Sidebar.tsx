@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ACCENT, currentPhase } from "@/lib/design";
 import { logout } from "@/app/(app)/actions";
-import type { Office } from "@/lib/data";
+import type { Office, Member } from "@/lib/data";
+import { canViewTab, type TabKey } from "@/lib/permissions";
 
-const NAV = [
+const NAV: { seg: TabKey; label: string; icon: string }[] = [
   { seg: "dashboard", label: "Visão geral", icon: "dash" },
   { seg: "tarefas", label: "Tarefas", icon: "tasks" },
   { seg: "prazos", label: "Prazos", icon: "cal" },
@@ -17,7 +18,7 @@ const NAV = [
   { seg: "ibs", label: "IBS e CBS", icon: "ibs" },
   { seg: "base-conhecimento", label: "Base de conhecimento", icon: "kb" },
   { seg: "configuracoes", label: "Configurações", icon: "settings" },
-] as const;
+];
 
 function Icon({ name }: { name: string }) {
   switch (name) {
@@ -101,10 +102,11 @@ function Icon({ name }: { name: string }) {
   }
 }
 
-export function Sidebar({ office }: { office: Office }) {
+export function Sidebar({ office, member }: { office: Office; member: Member }) {
   const pathname = usePathname();
   const phase = currentPhase();
   const navRef = useRef<HTMLElement>(null);
+  const visibleNav = NAV.filter((n) => canViewTab(member, n.seg));
   const [pill, setPill] = useState<{ top: number; height: number; visible: boolean; animate: boolean }>({
     top: 0,
     height: 0,
@@ -181,7 +183,7 @@ export function Sidebar({ office }: { office: Office }) {
             pointerEvents: "none",
           }}
         />
-        {NAV.map((n) => {
+        {visibleNav.map((n) => {
           const active = pathname.startsWith("/" + n.seg);
           return (
             <Link

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
+import { canDo } from "@/lib/permissions";
 
 export type CreateTaskState = { error?: string };
 
@@ -25,6 +26,7 @@ export async function createTask(_prev: CreateTaskState, formData: FormData): Pr
   const subtasks: string[] = JSON.parse(String(formData.get("subtasks") || "[]"));
 
   const { office, member } = await getContext();
+  if (!canDo(member, "tarefas", "create")) return { error: "Você não tem permissão para criar tarefas." };
   const supabase = await createClient();
 
   const { data: task, error } = await supabase
@@ -71,6 +73,8 @@ export async function createTask(_prev: CreateTaskState, formData: FormData): Pr
 export async function deleteTask(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return;
+  const { member } = await getContext();
+  if (!canDo(member, "tarefas", "delete")) return;
   const supabase = await createClient();
   await supabase.from("tasks").delete().eq("id", id);
   revalidatePath("/tarefas");
@@ -81,6 +85,8 @@ export async function updateTaskField(formData: FormData) {
   const id = String(formData.get("id") || "");
   const field = String(formData.get("field") || "");
   if (!id || !FIELDS.has(field)) return;
+  const { member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   let value: string | null = String(formData.get("value") ?? "");
   if ((field === "start_date" || field === "due_date" || field === "flow_id") && value === "") value = null;
   const supabase = await createClient();
@@ -93,6 +99,8 @@ export async function toggleRec(formData: FormData) {
   const id = String(formData.get("id") || "");
   const rec = formData.get("rec") === "true";
   if (!id) return;
+  const { member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   await supabase.from("tasks").update({ rec: !rec }).eq("id", id);
   revalidatePath(`/tarefas/${id}`);
@@ -102,7 +110,8 @@ export async function addSubtask(formData: FormData) {
   const taskId = String(formData.get("taskId") || "");
   const title = String(formData.get("title") || "").trim();
   if (!taskId || !title) return;
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   const { count } = await supabase
     .from("subtasks")
@@ -116,6 +125,8 @@ export async function removeSubtask(formData: FormData) {
   const id = String(formData.get("id") || "");
   const taskId = String(formData.get("taskId") || "");
   if (!id) return;
+  const { member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   await supabase.from("subtasks").delete().eq("id", id);
   revalidatePath(`/tarefas/${taskId}`);
@@ -126,7 +137,8 @@ export async function toggleCompletion(formData: FormData) {
   const subtaskId = String(formData.get("subtaskId") || "");
   const taskId = String(formData.get("taskId") || "");
   if (!tcId || !subtaskId) return;
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("subtask_completions")
@@ -153,6 +165,7 @@ export async function addComment(formData: FormData) {
   const text = String(formData.get("text") || "").trim();
   if (!taskId || !text) return;
   const { office, member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   await supabase
     .from("comments")
@@ -164,7 +177,8 @@ export async function togglePerson(formData: FormData) {
   const taskId = String(formData.get("taskId") || "");
   const memberId = String(formData.get("memberId") || "");
   if (!taskId || !memberId) return;
-  const { office } = await getContext();
+  const { office, member: caller } = await getContext();
+  if (!canDo(caller, "tarefas", "edit")) return;
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("task_people")
@@ -184,7 +198,8 @@ export async function linkClient(formData: FormData) {
   const taskId = String(formData.get("taskId") || "");
   const clientId = String(formData.get("clientId") || "");
   if (!taskId || !clientId) return;
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   await supabase.from("task_clients").insert({ office_id: office.id, task_id: taskId, client_id: clientId });
   revalidatePath(`/tarefas/${taskId}`);
@@ -194,6 +209,8 @@ export async function unlinkClient(formData: FormData) {
   const tcId = String(formData.get("taskClientId") || "");
   const taskId = String(formData.get("taskId") || "");
   if (!tcId) return;
+  const { member } = await getContext();
+  if (!canDo(member, "tarefas", "edit")) return;
   const supabase = await createClient();
   await supabase.from("task_clients").delete().eq("id", tcId);
   revalidatePath(`/tarefas/${taskId}`);

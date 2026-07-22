@@ -3,8 +3,11 @@
 import { useActionState, useState, useTransition } from "react";
 import { ACCENT, sevMap, badgeMap } from "@/lib/design";
 import { LiveMdEditor } from "@/components/app/LiveMdEditor";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
 import { AddChange } from "./add-change";
 import { addMonth, deleteChange, deleteMonth, saveChangeContent, type PrazosState } from "./actions";
+
+type Perms = { create: boolean; edit: boolean; delete: boolean };
 
 export type ChangeRow = {
   id: string;
@@ -22,7 +25,7 @@ function monthLabel(mk: string) {
   return new Date(yy, mm - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
-function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void }) {
+function Drawer({ change, onClose, canEdit }: { change: ChangeRow; onClose: () => void; canEdit: boolean }) {
   const [text, setText] = useState(change.content);
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -55,14 +58,16 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
             <div style={{ fontSize: 11, color: "#8a8d98", fontFamily: "var(--font-jetbrains)", marginTop: 2 }}>{change.date}</div>
           </div>
           {error ? <div style={{ fontSize: 11.5, color: "#b3402e", flex: "none" }}>{error}</div> : null}
-          <button
-            onClick={save}
-            disabled={pending}
-            className="hv-btn"
-            style={{ marginLeft: "auto", flex: "none", fontSize: 12, fontWeight: 600, color: "#fff", background: saved ? "#0e7a6f" : ACCENT, border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", opacity: pending ? 0.7 : 1 }}
-          >
-            {pending ? "Salvando…" : saved ? "Salvo ✓" : "Salvar"}
-          </button>
+          {canEdit ? (
+            <button
+              onClick={save}
+              disabled={pending}
+              className="hv-btn"
+              style={{ marginLeft: "auto", flex: "none", fontSize: 12, fontWeight: 600, color: "#fff", background: saved ? "#0e7a6f" : ACCENT, border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", opacity: pending ? 0.7 : 1 }}
+            >
+              {pending ? "Salvando…" : saved ? "Salvo ✓" : "Salvar"}
+            </button>
+          ) : null}
           <button onClick={onClose} className="hv-light" style={{ flex: "none", width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", cursor: "pointer", color: "#4b4e58", background: "none", border: "none", fontSize: 15 }}>
             ✕
           </button>
@@ -82,7 +87,7 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
   );
 }
 
-export function PrazosBoard({ months, changes }: { months: string[]; changes: ChangeRow[] }) {
+export function PrazosBoard({ months, changes, perms }: { months: string[]; changes: ChangeRow[]; perms: Perms }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = changes.find((c) => c.id === openId) ?? null;
   const [monthState, monthAction, monthPending] = useActionState<PrazosState, FormData>(
@@ -92,18 +97,20 @@ export function PrazosBoard({ months, changes }: { months: string[]; changes: Ch
 
   return (
     <div className="stagger" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 24, height: "100%", overflow: "auto" }}>
-      <form
-        action={monthAction}
-        style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "12px 16px" }}
-      >
-        <div style={{ fontSize: 12.5, fontWeight: 700 }}>Adicionar mês</div>
-        <input type="month" name="month" required style={{ fontSize: 12.5, padding: "7px 9px", borderRadius: 8, border: "1px solid #e2e2de", color: "#33363f", fontFamily: "var(--font-jetbrains)" }} />
-        <button type="submit" disabled={monthPending} className="hv-btn" style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", opacity: monthPending ? 0.7 : 1 }}>
-          {monthPending ? "Adicionando…" : "+ Adicionar"}
-        </button>
-        {monthState.error ? <div style={{ fontSize: 11.5, color: "#b3402e" }}>{monthState.error}</div> : null}
-        <div style={{ marginLeft: "auto", fontSize: 11.5, color: "#8a8d98" }}>Clique em um card para abrir as anotações em markdown</div>
-      </form>
+      {perms.create ? (
+        <form
+          action={monthAction}
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "12px 16px" }}
+        >
+          <div style={{ fontSize: 12.5, fontWeight: 700 }}>Adicionar mês</div>
+          <input type="month" name="month" required style={{ fontSize: 12.5, padding: "7px 9px", borderRadius: 8, border: "1px solid #e2e2de", color: "#33363f", fontFamily: "var(--font-jetbrains)" }} />
+          <button type="submit" disabled={monthPending} className="hv-btn" style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", opacity: monthPending ? 0.7 : 1 }}>
+            {monthPending ? "Adicionando…" : "+ Adicionar"}
+          </button>
+          {monthState.error ? <div style={{ fontSize: 11.5, color: "#b3402e" }}>{monthState.error}</div> : null}
+          <div style={{ marginLeft: "auto", fontSize: 11.5, color: "#8a8d98" }}>Clique em um card para abrir as anotações em markdown</div>
+        </form>
+      ) : null}
 
       {months.map((mk) => {
         const cards = changes.filter((c) => c.month === mk);
@@ -112,13 +119,15 @@ export function PrazosBoard({ months, changes }: { months: string[]; changes: Ch
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: "#6b6e78", letterSpacing: ".06em", textTransform: "uppercase" }}>{monthLabel(mk)}</div>
               <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                <AddChange month={mk} />
-                <form action={async (fd) => { await deleteMonth(fd); }}>
-                  <input type="hidden" name="month" value={mk} />
-                  <button type="submit" title="Remover mês" className="hv-redbg" style={{ width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", color: "#b3402e", cursor: "pointer", border: "1px solid #f0d5d0", background: "none" }}>
-                    <svg width="13" height="13" viewBox="0 0 13 13"><path d="M2 3.5h9M5 3.5V2h3v1.5M3 3.5l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </button>
-                </form>
+                {perms.create ? <AddChange month={mk} /> : null}
+                {perms.delete ? (
+                  <ConfirmForm action={async (fd) => { await deleteMonth(fd); }} message={`Remover o mês de ${monthLabel(mk)} e todas as mudanças nele?`}>
+                    <input type="hidden" name="month" value={mk} />
+                    <button type="submit" title="Remover mês" className="hv-redbg" style={{ width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", color: "#b3402e", cursor: "pointer", border: "1px solid #f0d5d0", background: "none" }}>
+                      <svg width="13" height="13" viewBox="0 0 13 13"><path d="M2 3.5h9M5 3.5V2h3v1.5M3 3.5l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                  </ConfirmForm>
+                ) : null}
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
@@ -136,12 +145,19 @@ export function PrazosBoard({ months, changes }: { months: string[]; changes: Ch
                           notas
                         </div>
                       ) : null}
-                      <form action={async (fd) => { await deleteChange(fd); }} onClick={(e) => e.stopPropagation()} style={{ marginLeft: "auto" }}>
-                        <input type="hidden" name="id" value={c.id} />
-                        <button type="submit" title="Remover" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 2, background: "none", border: "none" }}>
-                          <svg width="14" height="14" viewBox="0 0 15 15"><path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </button>
-                      </form>
+                      {perms.delete ? (
+                        <ConfirmForm
+                          action={async (fd) => { await deleteChange(fd); }}
+                          message={`Remover "${c.title}"?`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ marginLeft: "auto" }}
+                        >
+                          <input type="hidden" name="id" value={c.id} />
+                          <button type="submit" title="Remover" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 2, background: "none", border: "none" }}>
+                            <svg width="14" height="14" viewBox="0 0 15 15"><path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </button>
+                        </ConfirmForm>
+                      ) : null}
                     </div>
                     <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 9, lineHeight: 1.35, textWrap: "pretty" }}>{c.title}</div>
                     {c.description ? <div style={{ fontSize: 12, color: "#8a8d98", marginTop: 6, lineHeight: 1.5, textWrap: "pretty" }}>{c.description}</div> : null}
@@ -162,7 +178,7 @@ export function PrazosBoard({ months, changes }: { months: string[]; changes: Ch
       })}
       {months.length === 0 ? <div style={{ fontSize: 12.5, color: "#a0a3ad", fontStyle: "italic" }}>Nenhum mês cadastrado — adicione um mês acima.</div> : null}
 
-      {open ? <Drawer key={open.id} change={open} onClose={() => setOpenId(null)} /> : null}
+      {open ? <Drawer key={open.id} change={open} onClose={() => setOpenId(null)} canEdit={perms.edit} /> : null}
     </div>
   );
 }

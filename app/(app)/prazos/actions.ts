@@ -3,13 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
+import { canDo } from "@/lib/permissions";
 
 export type PrazosState = { error?: string };
+const DENIED: PrazosState = { error: "Você não tem permissão para isso." };
 
 export async function addMonth(fd: FormData): Promise<PrazosState> {
   const month = String(fd.get("month") || "");
   if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Mês inválido." };
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "prazos", "create")) return DENIED;
   const supabase = await createClient();
   const { error } = await supabase.from("prazo_months").upsert({ office_id: office.id, month }, { onConflict: "office_id,month" });
   if (error) {
@@ -29,7 +32,8 @@ export async function addChange(fd: FormData): Promise<PrazosState> {
   const description = String(fd.get("description") || "").trim();
   const badge = String(fd.get("badge") || "");
   const [y, m, d] = dateIso.split("-");
-  const { office } = await getContext();
+  const { office, member } = await getContext();
+  if (!canDo(member, "prazos", "create")) return DENIED;
   const supabase = await createClient();
 
   const { error: monthErr } = await supabase.from("prazo_months").upsert({ office_id: office.id, month }, { onConflict: "office_id,month" });
@@ -53,6 +57,8 @@ export async function addChange(fd: FormData): Promise<PrazosState> {
 export async function saveChangeContent(fd: FormData): Promise<PrazosState> {
   const id = String(fd.get("id") || "");
   if (!id) return { error: "ID inválido." };
+  const { member } = await getContext();
+  if (!canDo(member, "prazos", "edit")) return DENIED;
   const content = String(fd.get("content") ?? "");
   const supabase = await createClient();
   const { error } = await supabase.from("changes").update({ content }).eq("id", id);
@@ -67,6 +73,8 @@ export async function saveChangeContent(fd: FormData): Promise<PrazosState> {
 export async function deleteChange(fd: FormData): Promise<PrazosState> {
   const id = String(fd.get("id") || "");
   if (!id) return { error: "ID inválido." };
+  const { member } = await getContext();
+  if (!canDo(member, "prazos", "delete")) return DENIED;
   const supabase = await createClient();
   const { error } = await supabase.from("changes").delete().eq("id", id);
   if (error) {
@@ -80,6 +88,8 @@ export async function deleteChange(fd: FormData): Promise<PrazosState> {
 export async function deleteMonth(fd: FormData): Promise<PrazosState> {
   const month = String(fd.get("month") || "");
   if (!month) return { error: "Mês inválido." };
+  const { member } = await getContext();
+  if (!canDo(member, "prazos", "delete")) return DENIED;
   const supabase = await createClient();
   const { error: e1 } = await supabase.from("changes").delete().eq("month", month);
   if (e1) {
