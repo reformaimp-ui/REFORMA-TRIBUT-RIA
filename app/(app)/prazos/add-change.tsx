@@ -29,6 +29,7 @@ export function AddChange({ month }: { month: string }) {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [severity, setSeverity] = useState("informativo");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const valid = title.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date);
@@ -39,10 +40,12 @@ export function AddChange({ month }: { month: string }) {
     setDescription("");
     setDate("");
     setSeverity("informativo");
+    setError(null);
   };
 
   const submit = () => {
     if (!valid || pending) return;
+    setError(null);
     const fd = new FormData();
     fd.set("month", month);
     fd.set("title", title.trim());
@@ -50,7 +53,11 @@ export function AddChange({ month }: { month: string }) {
     fd.set("date", date);
     fd.set("severity", severity);
     startTransition(async () => {
-      await addChange(fd);
+      const res = await addChange(fd);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
       close();
     });
   };
@@ -133,6 +140,8 @@ export function AddChange({ month }: { month: string }) {
                   </select>
                 </div>
               </div>
+
+              {error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{error}</div> : null}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
                 <button

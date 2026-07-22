@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 import { ACCENT, sevMap, badgeMap } from "@/lib/design";
 import { mdToHtml } from "@/lib/markdown";
 import { AddChange } from "./add-change";
-import { addMonth, deleteChange, deleteMonth, saveChangeContent } from "./actions";
+import { addMonth, deleteChange, deleteMonth, saveChangeContent, type PrazosState } from "./actions";
 
 export type ChangeRow = {
   id: string;
@@ -26,15 +26,21 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
   const [text, setText] = useState(change.content);
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const html = useMemo(() => mdToHtml(text), [text]);
   const dirty = text !== change.content && !saved;
 
   const save = () => {
+    setError(null);
     const fd = new FormData();
     fd.set("id", change.id);
     fd.set("content", text);
     startTransition(async () => {
-      await saveChangeContent(fd);
+      const res = await saveChangeContent(fd);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
@@ -49,6 +55,7 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
             <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.3, textWrap: "pretty" }}>{change.title}</div>
             <div style={{ fontSize: 11, color: "#8a8d98", fontFamily: "var(--font-jetbrains)", marginTop: 2 }}>{change.date}</div>
           </div>
+          {error ? <div style={{ fontSize: 11.5, color: "#b3402e", flex: "none" }}>{error}</div> : null}
           <button
             onClick={save}
             disabled={pending}
@@ -91,18 +98,23 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
 export function PrazosBoard({ months, changes }: { months: string[]; changes: ChangeRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = changes.find((c) => c.id === openId) ?? null;
+  const [monthState, monthAction, monthPending] = useActionState<PrazosState, FormData>(
+    async (_prev, fd) => addMonth(fd),
+    {},
+  );
 
   return (
     <div className="stagger" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 24, height: "100%", overflow: "auto" }}>
       <form
-        action={addMonth}
+        action={monthAction}
         style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "12px 16px" }}
       >
         <div style={{ fontSize: 12.5, fontWeight: 700 }}>Adicionar mês</div>
         <input type="month" name="month" required style={{ fontSize: 12.5, padding: "7px 9px", borderRadius: 8, border: "1px solid #e2e2de", color: "#33363f", fontFamily: "var(--font-jetbrains)" }} />
-        <button type="submit" className="hv-btn" style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>
-          + Adicionar
+        <button type="submit" disabled={monthPending} className="hv-btn" style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", opacity: monthPending ? 0.7 : 1 }}>
+          {monthPending ? "Adicionando…" : "+ Adicionar"}
         </button>
+        {monthState.error ? <div style={{ fontSize: 11.5, color: "#b3402e" }}>{monthState.error}</div> : null}
         <div style={{ marginLeft: "auto", fontSize: 11.5, color: "#8a8d98" }}>Clique em um card para abrir as anotações em markdown</div>
       </form>
 
@@ -114,7 +126,7 @@ export function PrazosBoard({ months, changes }: { months: string[]; changes: Ch
               <div style={{ fontSize: 11.5, fontWeight: 700, color: "#6b6e78", letterSpacing: ".06em", textTransform: "uppercase" }}>{monthLabel(mk)}</div>
               <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                 <AddChange month={mk} />
-                <form action={deleteMonth}>
+                <form action={async (fd) => { await deleteMonth(fd); }}>
                   <input type="hidden" name="month" value={mk} />
                   <button type="submit" title="Remover mês" className="hv-redbg" style={{ width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", color: "#b3402e", cursor: "pointer", border: "1px solid #f0d5d0", background: "none" }}>
                     <svg width="13" height="13" viewBox="0 0 13 13"><path d="M2 3.5h9M5 3.5V2h3v1.5M3 3.5l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -137,7 +149,7 @@ export function PrazosBoard({ months, changes }: { months: string[]; changes: Ch
                           notas
                         </div>
                       ) : null}
-                      <form action={deleteChange} onClick={(e) => e.stopPropagation()} style={{ marginLeft: "auto" }}>
+                      <form action={async (fd) => { await deleteChange(fd); }} onClick={(e) => e.stopPropagation()} style={{ marginLeft: "auto" }}>
                         <input type="hidden" name="id" value={c.id} />
                         <button type="submit" title="Remover" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 2, background: "none", border: "none" }}>
                           <svg width="14" height="14" viewBox="0 0 15 15"><path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
