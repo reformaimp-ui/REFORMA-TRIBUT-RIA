@@ -80,6 +80,12 @@ export function LoginForm() {
             Cadastre seu escritório
           </Link>
         </div>
+        <div style={{ textAlign: "center", fontSize: 12.5, color: "#8a8d98" }}>
+          Foi convidado para um escritório?{" "}
+          <Link href="/primeiro-acesso" style={{ color: ACCENT, fontWeight: 600 }}>
+            Primeiro acesso
+          </Link>
+        </div>
       </form>
     </div>
   );

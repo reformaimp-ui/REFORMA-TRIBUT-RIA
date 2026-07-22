@@ -39,7 +39,8 @@ export function MemberForm() {
         <div style={LBL}>E-mail</div>
         <input className="fc" name="email" type="email" required placeholder="pessoa@escritorio.com.br" style={INP} />
         <div style={{ fontSize: 11, color: "#8a8d98", marginTop: 5 }}>
-          Enviamos um e-mail com um link para a pessoa definir a própria senha e entrar.
+          A pessoa acessa em “Primeiro acesso”, na tela de login, com esse e-mail — validamos por
+          código enviado ao e-mail e ela cria a própria senha.
         </div>
       </div>
       <div>
@@ -103,7 +104,7 @@ export function MemberForm() {
           opacity: pending ? 0.7 : 1,
         }}
       >
-        {pending ? "Enviando convite…" : "Enviar convite"}
+        {pending ? "Convidando…" : "Convidar pessoa"}
       </button>
     </form>
   );
