@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { ACCENT } from "@/lib/design";
 import { addChange } from "./actions";
 
@@ -31,6 +32,8 @@ export function AddChange({ month }: { month: string }) {
   const [severity, setSeverity] = useState("informativo");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const valid = title.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date);
 
@@ -72,8 +75,9 @@ export function AddChange({ month }: { month: string }) {
         + Nova mudança
       </div>
 
-      {open ? (
-        <>
+      {open && mounted
+        ? createPortal(
+            <>
           <div onClick={close} className="overlay-in" style={{ position: "fixed", inset: 0, background: "rgba(20,20,30,.45)", zIndex: 60 }} />
           <div
             role="dialog"
@@ -172,8 +176,10 @@ export function AddChange({ month }: { month: string }) {
               </div>
             </div>
           </div>
-        </>
-      ) : null}
+            </>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
