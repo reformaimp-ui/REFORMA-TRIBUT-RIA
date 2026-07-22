@@ -7,7 +7,7 @@ import { addSearchClient, removeSearchClient, toggleSearchClient, type SearchCli
 
 const LBL: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 };
 const INP: React.CSSProperties = { width: "100%", fontSize: 13, padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" };
-const CARD: React.CSSProperties = { background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: 22, display: "flex", flexDirection: "column", gap: 14, maxWidth: 620 };
+const CARD: React.CSSProperties = { background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: 22, display: "flex", flexDirection: "column", gap: 14, maxWidth: 680 };
 const BTN: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer" };
 
 export type SearchClientRow = { id: string; name: string; email: string; active: boolean };

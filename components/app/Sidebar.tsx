@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ACCENT, currentPhase } from "@/lib/design";
 import { logout } from "@/app/(app)/actions";
 import type { Office, Member } from "@/lib/data";
 import { canViewTab, type TabKey } from "@/lib/permissions";
 
-const NAV: { seg: TabKey; label: string; icon: string }[] = [
+const NAV_TOP: { seg: TabKey; label: string; icon: string }[] = [
   { seg: "dashboard", label: "Visão geral", icon: "dash" },
   { seg: "tarefas", label: "Tarefas", icon: "tasks" },
   { seg: "prazos", label: "Prazos", icon: "cal" },
   { seg: "fluxos", label: "Fluxos", icon: "flow" },
   { seg: "clientes", label: "Clientes", icon: "cli" },
-  { seg: "equipe", label: "Equipe", icon: "team" },
+];
+
+const NAV_BOTTOM: { seg: TabKey; label: string; icon: string }[] = [
   { seg: "ibs", label: "IBS e CBS", icon: "ibs" },
   { seg: "base-conhecimento", label: "Base de conhecimento", icon: "kb" },
   { seg: "configuracoes", label: "Configurações", icon: "settings" },
@@ -71,6 +73,13 @@ function Icon({ name }: { name: string }) {
           <path d="M10 9.3c1.6.2 2.6 1.3 2.9 3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".6" />
         </svg>
       );
+    case "key":
+      return (
+        <svg width="15" height="15" viewBox="0 0 15 15">
+          <circle cx="5" cy="10" r="3" fill="none" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M7 8l6-6M13 2v3h-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
     case "ibs":
       return (
         <svg width="15" height="15" viewBox="0 0 15 15">
@@ -102,17 +111,53 @@ function Icon({ name }: { name: string }) {
   }
 }
 
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" style={{ marginLeft: "auto", transition: "transform .18s ease", transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}>
+      <path d="M2 4l3.5 3.5L9 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function itemStyle(active: boolean): React.CSSProperties {
+  return {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 10px",
+    borderRadius: 8,
+    fontSize: 12.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    color: active ? ACCENT : "#4b4e58",
+    background: "transparent",
+  };
+}
+
 export function Sidebar({ office, member }: { office: Office; member: Member }) {
   const pathname = usePathname();
   const phase = currentPhase();
   const navRef = useRef<HTMLElement>(null);
-  const visibleNav = NAV.filter((n) => canViewTab(member, n.seg));
   const [pill, setPill] = useState<{ top: number; height: number; visible: boolean; animate: boolean }>({
     top: 0,
     height: 0,
     visible: false,
     animate: false,
   });
+
+  const topNav = NAV_TOP.filter((n) => canViewTab(member, n.seg));
+  const bottomNav = NAV_BOTTOM.filter((n) => canViewTab(member, n.seg));
+
+  const showEquipe = canViewTab(member, "equipe");
+  const showAcessoPesquisa = member.role === "admin";
+  const showAcessosGroup = showEquipe || showAcessoPesquisa;
+  const acessosActive = pathname.startsWith("/equipe") || pathname.startsWith("/acessos");
+
+  const [acessosOpen, setAcessosOpen] = useState(true);
+  useEffect(() => {
+    if (acessosActive) setAcessosOpen(true);
+  }, [acessosActive]);
 
   // Move o pill deslizante até o item ativo a cada navegação.
   useLayoutEffect(() => {
@@ -129,7 +174,7 @@ export function Sidebar({ office, member }: { office: Office; member: Member }) 
       visible: true,
       animate: p.visible, // primeira renderização posiciona sem animar
     }));
-  }, [pathname]);
+  }, [pathname, acessosOpen]);
 
   return (
     <aside
@@ -183,28 +228,60 @@ export function Sidebar({ office, member }: { office: Office; member: Member }) 
             pointerEvents: "none",
           }}
         />
-        {visibleNav.map((n) => {
+        {topNav.map((n) => {
           const active = pathname.startsWith("/" + n.seg);
           return (
-            <Link
-              key={n.seg}
-              href={"/" + n.seg}
-              data-active={active ? "true" : "false"}
-              className={active ? undefined : "hv-nav"}
-              style={{
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "8px 10px",
-                borderRadius: 8,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                color: active ? ACCENT : "#4b4e58",
-                background: "transparent",
-              }}
+            <Link key={n.seg} href={"/" + n.seg} data-active={active ? "true" : "false"} className={active ? undefined : "hv-nav"} style={itemStyle(active)}>
+              <Icon name={n.icon} />
+              {n.label}
+            </Link>
+          );
+        })}
+
+        {showAcessosGroup ? (
+          <>
+            <div
+              onClick={() => setAcessosOpen((o) => !o)}
+              className="hv-nav"
+              style={{ ...itemStyle(false), cursor: "pointer", color: acessosActive ? ACCENT : "#4b4e58" }}
             >
+              <Icon name="team" />
+              Acessos
+              <Chevron open={acessosOpen} />
+            </div>
+            {acessosOpen ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, marginLeft: 12, paddingLeft: 10, borderLeft: "1.5px solid #ececea" }}>
+                {showEquipe ? (
+                  <Link
+                    href="/equipe"
+                    data-active={pathname.startsWith("/equipe") ? "true" : "false"}
+                    className={pathname.startsWith("/equipe") ? undefined : "hv-nav"}
+                    style={{ ...itemStyle(pathname.startsWith("/equipe")), fontSize: 12 }}
+                  >
+                    <Icon name="team" />
+                    Equipe
+                  </Link>
+                ) : null}
+                {showAcessoPesquisa ? (
+                  <Link
+                    href="/acessos/pesquisa"
+                    data-active={pathname.startsWith("/acessos/pesquisa") ? "true" : "false"}
+                    className={pathname.startsWith("/acessos/pesquisa") ? undefined : "hv-nav"}
+                    style={{ ...itemStyle(pathname.startsWith("/acessos/pesquisa")), fontSize: 12 }}
+                  >
+                    <Icon name="key" />
+                    Acesso de pesquisa
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        {bottomNav.map((n) => {
+          const active = pathname.startsWith("/" + n.seg);
+          return (
+            <Link key={n.seg} href={"/" + n.seg} data-active={active ? "true" : "false"} className={active ? undefined : "hv-nav"} style={itemStyle(active)}>
               <Icon name={n.icon} />
               {n.label}
             </Link>

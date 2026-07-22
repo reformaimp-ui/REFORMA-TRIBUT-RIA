@@ -5,7 +5,6 @@ import { ACCENT } from "@/lib/design";
 import { Avatar } from "@/components/app/Avatar";
 import { createClient } from "@/lib/supabase/client";
 import { updateAvatarUrl, updateName, changePassword, type SettingsState } from "./actions";
-import { SearchClientPanel, type SearchClientRow } from "./search-client-panel";
 import type { Member, Office } from "@/lib/data";
 
 const LBL: React.CSSProperties = {
@@ -52,11 +51,7 @@ function Msg({ state }: { state: SettingsState }) {
   return null;
 }
 
-export function SettingsForm({
-  member, office, isAdmin, searchClients,
-}: {
-  member: Member; office: Office; isAdmin: boolean; searchClients: SearchClientRow[];
-}) {
+export function SettingsForm({ member, office }: { member: Member; office: Office }) {
   const [nameState, nameAction, namePending] = useActionState<SettingsState, FormData>(updateName, {});
   const [pwState, pwAction, pwPending] = useActionState<SettingsState, FormData>(changePassword, {});
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url);
@@ -159,8 +154,6 @@ export function SettingsForm({
           </button>
         </form>
       </div>
-
-      {isAdmin ? <SearchClientPanel clients={searchClients} /> : null}
     </div>
   );
 }
