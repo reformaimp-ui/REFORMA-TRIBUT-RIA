@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { ACCENT, sevMap, badgeMap } from "@/lib/design";
-import { mdToHtml } from "@/lib/markdown";
+import { LiveMdEditor } from "@/components/app/LiveMdEditor";
 import { AddChange } from "./add-change";
 import { addMonth, deleteChange, deleteMonth, saveChangeContent, type PrazosState } from "./actions";
 
@@ -27,7 +27,6 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const html = useMemo(() => mdToHtml(text), [text]);
   const dirty = text !== change.content && !saved;
 
   const save = () => {
@@ -68,27 +67,15 @@ function Drawer({ change, onClose }: { change: ChangeRow; onClose: () => void })
             ✕
           </button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-          <div style={{ display: "flex", flexDirection: "column", minHeight: 0, borderRight: "1px solid #e7e7e3" }}>
-            <div style={{ flex: "none", fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", padding: "12px 20px 6px" }}>
-              Anotações (markdown) {dirty ? <span style={{ color: "#c98a2e" }}>· não salvo</span> : null}
-            </div>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              autoFocus
-              placeholder={"Escreva em markdown…\n\n# Título\n**negrito**, *itálico*, `código`\n- item de lista\n> citação"}
-              style={{ flex: 1, minHeight: 0, width: "100%", font: "400 13px var(--font-jetbrains), monospace", border: "none", outline: "none", resize: "none", lineHeight: 1.7, padding: "6px 20px 20px", background: "#fafaf8" }}
-            />
-          </div>
-          <div style={{ minHeight: 0, overflow: "auto", padding: "12px 22px 24px" }}>
-            <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>Pré-visualização</div>
-            {text.trim() ? (
-              <div className="md-preview" style={{ fontSize: 14 }} dangerouslySetInnerHTML={{ __html: html }} />
-            ) : (
-              <div style={{ fontSize: 12, color: "#a0a3ad", fontStyle: "italic" }}>A formatação aparece aqui enquanto você escreve.</div>
-            )}
-          </div>
+        <div style={{ flex: "none", fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", padding: "12px 22px 6px" }}>
+          Anotações {dirty ? <span style={{ color: "#c98a2e" }}>· não salvo</span> : null}
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "6px 22px 24px" }}>
+          <LiveMdEditor
+            value={text}
+            onChange={setText}
+            placeholder={"Escreva em markdown… # Título, **negrito**, *itálico*, `código`, - item de lista, > citação"}
+          />
         </div>
       </div>
     </>
