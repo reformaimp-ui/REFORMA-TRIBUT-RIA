@@ -72,6 +72,22 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
     servTotal = count ?? 0;
   }
 
+  // CST e % de redução do serviço seguem o mesmo cClassTrib cadastrado em
+  // Tributação dos produtos — não são digitados de novo, são derivados por join.
+  let cstRedByCclass: Record<string, { cst: string; red_ibs: string; red_cbs: string }> = {};
+  if (serv.length) {
+    const cclassCodes = Array.from(new Set(serv.map((r) => r.cclass).filter(Boolean)));
+    if (cclassCodes.length) {
+      const { data: pr } = await supabase
+        .from("produto_rows")
+        .select("cclass,cst,red_ibs,red_cbs")
+        .in("cclass", cclassCodes);
+      for (const r of (pr ?? []) as { cclass: string; cst: string; red_ibs: string; red_cbs: string }[]) {
+        if (!cstRedByCclass[r.cclass]) cstRedByCclass[r.cclass] = { cst: r.cst, red_ibs: r.red_ibs, red_cbs: r.red_cbs };
+      }
+    }
+  }
+
   const [{ data: cst }, { data: cclass }, { data: links }] = await Promise.all([
     supabase.from("cst_rows").select("code,descr").order("position"),
     supabase.from("cclass_rows").select("code,descr").order("position"),
@@ -123,8 +139,8 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
       ) : tab === "servicos" ? (
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos serviços</div>
-          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Classificação por NBS (Nomenclatura Brasileira de Serviços) — alíquotas de referência do período de transição</div>
-          <ServicoTable rows={serv} total={servTotal} page={page} pageSize={PAGE_SIZE} q={q} />
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Classificação por NBS (Nomenclatura Brasileira de Serviços) — CST e % de redução seguem o mesmo cClassTrib cadastrado em Tributação dos produtos</div>
+          <ServicoTable rows={serv} cstRedByCclass={cstRedByCclass} total={servTotal} page={page} pageSize={PAGE_SIZE} q={q} />
         </section>
       ) : (
         <section>

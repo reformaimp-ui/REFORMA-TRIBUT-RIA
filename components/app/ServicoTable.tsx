@@ -15,12 +15,13 @@ export type ServicoRow = {
   item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string;
 };
 
-const GRID = "1.1fr 100px 1.6fr 80px 1.1fr 90px 1.4fr";
+const GRID = "1fr 90px 1.4fr 70px 1fr 80px 1.2fr 70px 70px 70px";
 
 export function ServicoTable({
-  rows, total, page, pageSize, q,
+  rows, cstRedByCclass, total, page, pageSize, q,
 }: {
-  rows: ServicoRow[]; total: number; page: number; pageSize: number; q: string;
+  rows: ServicoRow[]; cstRedByCclass: Record<string, { cst: string; red_ibs: string; red_cbs: string }>;
+  total: number; page: number; pageSize: number; q: string;
 }) {
   const router = useRouter();
   const [term, setTerm] = useState(q);
@@ -55,21 +56,27 @@ export function ServicoTable({
       </div>
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, whiteSpace: "nowrap", ...th }}>
-          <div>Descrição item</div><div>NBS</div><div>Descrição NBS</div><div>INDOP</div><div>Local incidência IBS</div><div>cClassTrib</div><div>Nome cClassTrib</div>
+          <div>Descrição item</div><div>NBS</div><div>Descrição NBS</div><div>INDOP</div><div>Local incidência IBS</div><div>cClassTrib</div><div>Nome cClassTrib</div><div>CST</div><div>Red. IBS</div><div>Red. CBS</div>
         </div>
-        {rows.map((r, i) => (
-          <div key={`${r.nbs}-${r.cclass}-${i}`} className="hv-row" style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 500 }}>{r.item}</div>
-            <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600 }}>{r.nbs}</div>
-            <div style={{ fontSize: 12, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nbs_descr}</div>
-            <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: "#4b4e58" }}>{r.indop}</div>
-            <div style={{ fontSize: 12, color: "#33363f" }}>{r.local_ibs}</div>
-            <CclassInfo key={`${r.cclass}-${i}`} code={r.cclass} descr={r.cclass_nome}>
-              <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: "#7c3aed" }}>{r.cclass}</div>
-            </CclassInfo>
-            <div style={{ fontSize: 12, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis" }}>{r.cclass_nome}</div>
-          </div>
-        ))}
+        {rows.map((r, i) => {
+          const ref = cstRedByCclass[r.cclass];
+          return (
+            <div key={`${r.nbs}-${r.cclass}-${i}`} className="hv-row" style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{r.item}</div>
+              <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600 }}>{r.nbs}</div>
+              <div style={{ fontSize: 12, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nbs_descr}</div>
+              <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: "#4b4e58" }}>{r.indop}</div>
+              <div style={{ fontSize: 12, color: "#33363f" }}>{r.local_ibs}</div>
+              <CclassInfo key={`${r.cclass}-${i}`} code={r.cclass} descr={r.cclass_nome}>
+                <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: "#7c3aed" }}>{r.cclass}</div>
+              </CclassInfo>
+              <div style={{ fontSize: 12, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis" }}>{r.cclass_nome}</div>
+              <div title="Herdado da Tributação dos produtos, pelo mesmo cClassTrib" style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: ref ? ACCENT : "#c0c2cb" }}>{ref?.cst || "—"}</div>
+              <div title="Herdado da Tributação dos produtos, pelo mesmo cClassTrib" style={{ fontSize: 12, color: ref ? "#0e7a6f" : "#c0c2cb", fontWeight: 600 }}>{ref?.red_ibs || "—"}</div>
+              <div title="Herdado da Tributação dos produtos, pelo mesmo cClassTrib" style={{ fontSize: 12, color: ref ? "#0e7a6f" : "#c0c2cb", fontWeight: 600 }}>{ref?.red_cbs || "—"}</div>
+            </div>
+          );
+        })}
         {total === 0 ? (
           <div style={{ padding: 18, fontSize: 12.5, color: "#a0a3ad", fontStyle: "italic" }}>
             {q ? `Nenhum serviço encontrado para “${q}”.` : "Nenhum serviço cadastrado — use “+ Adicionar dado”."}
