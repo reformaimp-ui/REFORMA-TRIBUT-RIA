@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ACCENT, av } from "@/lib/design";
 import { ConfirmForm } from "@/components/app/ConfirmForm";
 import type { Permissions } from "@/lib/permissions";
-import { removeMember } from "./actions";
+import { removeMember, toggleMember } from "./actions";
 import { MemberPermissionsModal } from "./member-permissions-modal";
 
 export type MemberLite = {
@@ -16,6 +16,7 @@ export type MemberLite = {
   cargo: string | null;
   role: string;
   permissions: Permissions | null;
+  active: boolean;
 };
 
 export function MemberCard({
@@ -23,11 +24,13 @@ export function MemberCard({
   locked,
   canManage,
   canRemove,
+  isSelf,
 }: {
   m: MemberLite;
   locked: boolean;
   canManage: boolean;
   canRemove: boolean;
+  isSelf: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isAdmin = m.role === "admin";
@@ -42,6 +45,7 @@ export function MemberCard({
         style={{
           background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "16px 18px",
           display: "flex", flexDirection: "column", gap: 10, cursor: clickable ? "pointer" : "default",
+          opacity: m.active ? 1 : 0.55,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -50,6 +54,20 @@ export function MemberCard({
             <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</div>
             <div style={{ fontSize: 11, color: "#8a8d98", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cargo}</div>
           </div>
+          {canManage && !isSelf ? (
+            <form action={toggleMember} onClick={(e) => e.stopPropagation()}>
+              <input type="hidden" name="id" value={m.id} />
+              <input type="hidden" name="active" value={String(m.active)} />
+              <button
+                type="submit"
+                title={m.active ? "Desativar acesso" : "Ativar acesso"}
+                className="hv-light"
+                style={{ fontSize: 10.5, fontWeight: 600, color: "#4b4e58", background: "#fff", border: "1.5px solid #e2e2de", borderRadius: 7, padding: "4px 8px", cursor: "pointer" }}
+              >
+                {m.active ? "Desativar" : "Ativar"}
+              </button>
+            </form>
+          ) : null}
           {locked ? (
             <div title="Atribuído a tarefas ou clientes" style={{ color: "#c2c3c9", padding: 2 }}>
               <svg width="13" height="13" viewBox="0 0 13 13">
@@ -79,13 +97,20 @@ export function MemberCard({
         </div>
         <div style={{ height: 1, background: "#f0f0ed" }} />
         <div style={{ fontSize: 11.5, color: "#6b6e78", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email || "—"}</div>
-        <div
-          style={{
-            alignSelf: "flex-start", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
-            background: isAdmin ? "#eef1ff" : "#f4f4f2", color: isAdmin ? ACCENT : "#6b6e78",
-          }}
-        >
-          {isAdmin ? "Admin" : "Membro"}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div
+            style={{
+              alignSelf: "flex-start", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
+              background: isAdmin ? "#eef1ff" : "#f4f4f2", color: isAdmin ? ACCENT : "#6b6e78",
+            }}
+          >
+            {isAdmin ? "Admin" : "Membro"}
+          </div>
+          {!m.active ? (
+            <div style={{ alignSelf: "flex-start", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "#fdf2f0", color: "#b3402e" }}>
+              Inativo
+            </div>
+          ) : null}
         </div>
       </div>
       {open ? <MemberPermissionsModal memberId={m.id} memberName={m.name} initial={m.permissions} onClose={() => setOpen(false)} /> : null}

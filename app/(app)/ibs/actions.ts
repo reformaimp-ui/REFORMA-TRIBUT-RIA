@@ -210,6 +210,49 @@ export async function finishImport() {
   revalidatePath("/ibs");
 }
 
+export async function removeCst(fd: FormData) {
+  const code = String(fd.get("code") || "");
+  if (!code) return;
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "delete")) return;
+  const supabase = await createClient();
+  await supabase.from("cst_rows").delete().eq("code", code);
+  revalidatePath("/ibs");
+}
+
+export async function removeCclass(fd: FormData) {
+  const code = String(fd.get("code") || "");
+  if (!code) return;
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "delete")) return;
+  const supabase = await createClient();
+  await supabase.from("cclass_rows").delete().eq("code", code);
+  revalidatePath("/ibs");
+}
+
+export async function removeProduto(fd: FormData) {
+  const ncm = String(fd.get("ncm") || "");
+  if (!ncm) return;
+  const cst = String(fd.get("cst") || "");
+  const cclass = String(fd.get("cclass") || "");
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "delete")) return;
+  const supabase = await createClient();
+  await supabase.from("produto_rows").delete().eq("ncm", ncm).eq("cst", cst).eq("cclass", cclass);
+  revalidatePath("/ibs");
+}
+
+export async function removeServico(fd: FormData) {
+  const nbs = String(fd.get("nbs") || "");
+  if (!nbs) return;
+  const cclass = String(fd.get("cclass") || "");
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "delete")) return;
+  const supabase = await createClient();
+  await supabase.from("servico_rows").delete().eq("nbs", nbs).eq("cclass", cclass);
+  revalidatePath("/ibs");
+}
+
 // ─────────────────────────── Árvore de NCM ───────────────────────────
 
 function onlyDigits(s: string): string {

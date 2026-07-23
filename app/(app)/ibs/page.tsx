@@ -26,6 +26,7 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   const { member } = await getContext();
   if (!canViewTab(member, "ibs")) redirect("/dashboard");
   const canCreate = canDo(member, "ibs", "create");
+  const canDelete = canDo(member, "ibs", "delete");
   const sp = await searchParams;
   const tab =
     sp.tab === "produtos" ? "produtos" :
@@ -122,25 +123,25 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
           <section>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>CSTs do IBS e CBS</div>
             <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Código de Situação Tributária — Informe Técnico 2025.002 (RFB)</div>
-            <CstTable rows={cst ?? []} linksByCst={linksByCst} />
+            <CstTable rows={cst ?? []} linksByCst={linksByCst} canDelete={canDelete} />
           </section>
           <section>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>cClassTrib do IBS e CBS</div>
             <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Código de Classificação Tributária — os 3 primeiros dígitos coincidem com o CST</div>
-            <CclassTable rows={cclass ?? []} />
+            <CclassTable rows={cclass ?? []} canDelete={canDelete} />
           </section>
         </div>
       ) : tab === "produtos" ? (
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos produtos</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Alíquotas de referência do período de transição — clique no NCM para ver a árvore de classificação</div>
-          <ProdutoTable rows={prod} cclassDescr={cclassDescr} total={prodTotal} page={page} pageSize={PAGE_SIZE} q={q} />
+          <ProdutoTable rows={prod} cclassDescr={cclassDescr} total={prodTotal} page={page} pageSize={PAGE_SIZE} q={q} canDelete={canDelete} />
         </section>
       ) : tab === "servicos" ? (
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos serviços</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Classificação por NBS (Nomenclatura Brasileira de Serviços) — CST e % de redução seguem o mesmo cClassTrib cadastrado em Tributação dos produtos</div>
-          <ServicoTable rows={serv} cstRedByCclass={cstRedByCclass} total={servTotal} page={page} pageSize={PAGE_SIZE} q={q} />
+          <ServicoTable rows={serv} cstRedByCclass={cstRedByCclass} total={servTotal} page={page} pageSize={PAGE_SIZE} q={q} canDelete={canDelete} />
         </section>
       ) : (
         <section>

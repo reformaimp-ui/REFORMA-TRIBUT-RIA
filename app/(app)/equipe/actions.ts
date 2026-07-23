@@ -62,6 +62,18 @@ export async function addMember(_prev: MemberFormState, formData: FormData): Pro
   redirect("/equipe");
 }
 
+export async function toggleMember(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const active = formData.get("active") === "true";
+  if (!id) return;
+  const { member: caller } = await getContext();
+  if (caller.role !== "admin") return;
+  if (caller.id === id) return; // não pode desativar a si mesmo
+  const supabase = await createClient();
+  await supabase.from("members").update({ active: !active }).eq("id", id);
+  revalidatePath("/equipe");
+}
+
 export async function removeMember(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return;

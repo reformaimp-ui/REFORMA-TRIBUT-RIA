@@ -67,6 +67,7 @@ export default async function EquipePage() {
             locked={inUse.has(m.id)}
             canManage={isAdmin}
             canRemove={isAdmin && !inUse.has(m.id) && members.length > 1}
+            isSelf={m.id === member.id}
           />
         ))}
       </div>

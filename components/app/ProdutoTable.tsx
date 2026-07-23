@@ -6,7 +6,8 @@ import { ACCENT } from "@/lib/design";
 import { CclassInfo } from "@/components/app/CclassInfo";
 import { NcmInfo } from "@/components/app/NcmInfo";
 import { TableSearch } from "@/components/app/TableSearch";
-import { getNcmChainsForCodes, type NcmNode } from "@/app/(app)/ibs/actions";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
+import { getNcmChainsForCodes, removeProduto, type NcmNode } from "@/app/(app)/ibs/actions";
 
 const th: React.CSSProperties = {
   padding: "10px 18px", background: "#fafaf8", borderBottom: "1px solid #ececea",
@@ -16,6 +17,7 @@ const th: React.CSSProperties = {
 export type ProdRow = { ncm: string; descr: string; cst: string; cclass: string; aliq_ibs: string; aliq_cbs: string; red_ibs: string; red_cbs: string };
 
 const GRID = "110px 1.6fr 70px 90px 90px 90px 100px 100px";
+const GRID_DEL = `${GRID} 34px`;
 
 /** Exibição — não altera o dado salvo. Formata só quando há os 8 dígitos padrão. */
 function formatNcm(raw: string): string {
@@ -24,11 +26,12 @@ function formatNcm(raw: string): string {
 }
 
 export function ProdutoTable({
-  rows, cclassDescr, total, page, pageSize, q,
+  rows, cclassDescr, total, page, pageSize, q, canDelete,
 }: {
   rows: ProdRow[]; cclassDescr: Record<string, string>;
-  total: number; page: number; pageSize: number; q: string;
+  total: number; page: number; pageSize: number; q: string; canDelete?: boolean;
 }) {
+  const grid = canDelete ? GRID_DEL : GRID;
   const router = useRouter();
   const [term, setTerm] = useState(q);
   useEffect(() => setTerm(q), [q]);
@@ -79,14 +82,14 @@ export function ProdutoTable({
         <TableSearch value={term} onChange={setTerm} placeholder="Pesquisar NCM, descrição, CST ou cClassTrib…" />
       </div>
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, whiteSpace: "nowrap", ...th }}>
-          <div>NCM</div><div>Descrição</div><div>CST</div><div>cClassTrib</div><div>Alíq. IBS</div><div>Alíq. CBS</div><div>Red. IBS</div><div>Red. CBS</div>
+        <div style={{ display: "grid", gridTemplateColumns: grid, gap: 10, whiteSpace: "nowrap", ...th }}>
+          <div>NCM</div><div>Descrição</div><div>CST</div><div>cClassTrib</div><div>Alíq. IBS</div><div>Alíq. CBS</div><div>Red. IBS</div><div>Red. CBS</div>{canDelete ? <div /> : null}
         </div>
         {rows.map((r, i) => {
           const chain = q.trim() ? chains[r.ncm] : undefined;
           return (
             <div key={`${r.ncm}-${i}`}>
-              <div className="hv-row" style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: chain?.length ? "none" : "1px solid #f0f0ed" }}>
+              <div className="hv-row" style={{ display: "grid", gridTemplateColumns: grid, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: chain?.length ? "none" : "1px solid #f0f0ed" }}>
                 <NcmInfo code={r.ncm}>
                   <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 2 }}>
                     {formatNcm(r.ncm)}
@@ -101,6 +104,18 @@ export function ProdutoTable({
                 <div style={{ fontSize: 12, color: "#33363f" }}>{r.aliq_cbs}</div>
                 <div style={{ fontSize: 12, color: "#0e7a6f", fontWeight: 600 }}>{r.red_ibs}</div>
                 <div style={{ fontSize: 12, color: "#0e7a6f", fontWeight: 600 }}>{r.red_cbs}</div>
+                {canDelete ? (
+                  <ConfirmForm action={removeProduto} message={`Remover a tributação do NCM ${r.ncm} (CST ${r.cst} / cClassTrib ${r.cclass})?`}>
+                    <input type="hidden" name="ncm" value={r.ncm} />
+                    <input type="hidden" name="cst" value={r.cst} />
+                    <input type="hidden" name="cclass" value={r.cclass} />
+                    <button type="submit" title="Remover" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 4, background: "none", border: "none" }}>
+                      <svg width="14" height="14" viewBox="0 0 15 15">
+                        <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </ConfirmForm>
+                ) : null}
               </div>
               {chain?.length ? (
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5, padding: "0 18px 10px 34px", borderBottom: "1px solid #f0f0ed", background: "#fafaf8" }}>

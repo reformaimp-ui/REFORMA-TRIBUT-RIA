@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { CclassInfo } from "@/components/app/CclassInfo";
 import { TableSearch } from "@/components/app/TableSearch";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
+import { removeServico } from "@/app/(app)/ibs/actions";
 
 const th: React.CSSProperties = {
   padding: "10px 18px", background: "#fafaf8", borderBottom: "1px solid #ececea",
@@ -16,13 +18,15 @@ export type ServicoRow = {
 };
 
 const GRID = "1fr 90px 1.4fr 70px 1fr 80px 1.2fr 70px 70px 70px";
+const GRID_DEL = `${GRID} 34px`;
 
 export function ServicoTable({
-  rows, cstRedByCclass, total, page, pageSize, q,
+  rows, cstRedByCclass, total, page, pageSize, q, canDelete,
 }: {
   rows: ServicoRow[]; cstRedByCclass: Record<string, { cst: string; red_ibs: string; red_cbs: string }>;
-  total: number; page: number; pageSize: number; q: string;
+  total: number; page: number; pageSize: number; q: string; canDelete?: boolean;
 }) {
+  const grid = canDelete ? GRID_DEL : GRID;
   const router = useRouter();
   const [term, setTerm] = useState(q);
   useEffect(() => setTerm(q), [q]);
@@ -55,13 +59,13 @@ export function ServicoTable({
         <TableSearch value={term} onChange={setTerm} placeholder="Pesquisar NBS, descrição, INDOP ou cClassTrib…" />
       </div>
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, whiteSpace: "nowrap", ...th }}>
-          <div>Descrição item</div><div>NBS</div><div>Descrição NBS</div><div>INDOP</div><div>Local incidência IBS</div><div>cClassTrib</div><div>Nome cClassTrib</div><div>CST</div><div>Red. IBS</div><div>Red. CBS</div>
+        <div style={{ display: "grid", gridTemplateColumns: grid, gap: 10, whiteSpace: "nowrap", ...th }}>
+          <div>Descrição item</div><div>NBS</div><div>Descrição NBS</div><div>INDOP</div><div>Local incidência IBS</div><div>cClassTrib</div><div>Nome cClassTrib</div><div>CST</div><div>Red. IBS</div><div>Red. CBS</div>{canDelete ? <div /> : null}
         </div>
         {rows.map((r, i) => {
           const ref = cstRedByCclass[r.cclass];
           return (
-            <div key={`${r.nbs}-${r.cclass}-${i}`} className="hv-row" style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}>
+            <div key={`${r.nbs}-${r.cclass}-${i}`} className="hv-row" style={{ display: "grid", gridTemplateColumns: grid, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}>
               <div style={{ fontSize: 12.5, fontWeight: 500 }}>{r.item}</div>
               <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600 }}>{r.nbs}</div>
               <div style={{ fontSize: 12, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nbs_descr}</div>
@@ -74,6 +78,17 @@ export function ServicoTable({
               <div title="Herdado da Tributação dos produtos, pelo mesmo cClassTrib" style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 700, color: ref ? ACCENT : "#c0c2cb" }}>{ref?.cst || "—"}</div>
               <div title="Herdado da Tributação dos produtos, pelo mesmo cClassTrib" style={{ fontSize: 12, color: ref ? "#0e7a6f" : "#c0c2cb", fontWeight: 600 }}>{ref?.red_ibs || "—"}</div>
               <div title="Herdado da Tributação dos produtos, pelo mesmo cClassTrib" style={{ fontSize: 12, color: ref ? "#0e7a6f" : "#c0c2cb", fontWeight: 600 }}>{ref?.red_cbs || "—"}</div>
+              {canDelete ? (
+                <ConfirmForm action={removeServico} message={`Remover a tributação do serviço NBS ${r.nbs} (cClassTrib ${r.cclass})?`}>
+                  <input type="hidden" name="nbs" value={r.nbs} />
+                  <input type="hidden" name="cclass" value={r.cclass} />
+                  <button type="submit" title="Remover" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 4, background: "none", border: "none" }}>
+                    <svg width="14" height="14" viewBox="0 0 15 15">
+                      <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </ConfirmForm>
+              ) : null}
             </div>
           );
         })}

@@ -13,6 +13,7 @@ export type Member = {
   role: string;
   avatar_url: string | null;
   permissions: Permissions | null;
+  active: boolean;
 };
 
 export type Office = { id: string; name: string; cnpj: string | null; accent: string };
@@ -46,7 +47,7 @@ export const getContext = cache(async (): Promise<AppContext> => {
   let [{ data: members }, { data: offices }] = await Promise.all([
     supabase
       .from("members")
-      .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions")
+      .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions,active")
       .order("created_at"),
     supabase.from("offices").select("id,name,cnpj,accent"),
   ]);
@@ -66,7 +67,7 @@ export const getContext = cache(async (): Promise<AppContext> => {
       [{ data: members }, { data: offices }] = await Promise.all([
         supabase
           .from("members")
-          .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions")
+          .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions,active")
           .order("created_at"),
         supabase.from("offices").select("id,name,cnpj,accent"),
       ]);
@@ -74,6 +75,11 @@ export const getContext = cache(async (): Promise<AppContext> => {
     }
     if (!member) redirect("/cadastro");
   }
+
+  // Pessoa desativada por um admin: bloqueia aqui, no chokepoint usado por
+  // todas as páginas e server actions de (app) — em vez de deixar cada uma
+  // checar sozinha.
+  if (member.active === false) redirect("/conta-desativada");
 
   const office = (offices ?? []).find((o) => o.id === member.office_id);
   if (!office) redirect("/cadastro");
