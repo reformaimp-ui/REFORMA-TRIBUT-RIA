@@ -7,6 +7,7 @@ import { canDo, canViewTab } from "@/lib/permissions";
 import { CstTable } from "@/components/app/CstTable";
 import { CclassTable } from "@/components/app/CclassTable";
 import { ProdutoTable, type ProdRow } from "@/components/app/ProdutoTable";
+import { ServicoTable, type ServicoRow } from "@/components/app/ServicoTable";
 import { NcmExplorer } from "@/components/app/NcmExplorer";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,10 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   if (!canViewTab(member, "ibs")) redirect("/dashboard");
   const canCreate = canDo(member, "ibs", "create");
   const sp = await searchParams;
-  const tab = sp.tab === "produtos" ? "produtos" : sp.tab === "arvore-ncm" ? "arvore-ncm" : "dados";
+  const tab =
+    sp.tab === "produtos" ? "produtos" :
+    sp.tab === "servicos" ? "servicos" :
+    sp.tab === "arvore-ncm" ? "arvore-ncm" : "dados";
   const q = (sp.q ?? "").trim();
   const page = Math.max(1, Number(sp.page) || 1);
   const supabase = await createClient();
@@ -50,6 +54,24 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
     prodTotal = count ?? 0;
   }
 
+  // Serviços: mesma lógica de busca + paginação server-side dos produtos, chaveada por NBS.
+  let serv: ServicoRow[] = [];
+  let servTotal = 0;
+  if (tab === "servicos") {
+    let query = supabase
+      .from("servico_rows")
+      .select("item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome", { count: "exact" })
+      .order("position")
+      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    if (q) {
+      const like = `%${q}%`;
+      query = query.or(`item.ilike.${like},nbs.ilike.${like},nbs_descr.ilike.${like},indop.ilike.${like},cclass.ilike.${like}`);
+    }
+    const { data, count } = await query;
+    serv = (data ?? []) as ServicoRow[];
+    servTotal = count ?? 0;
+  }
+
   const [{ data: cst }, { data: cclass }, { data: links }] = await Promise.all([
     supabase.from("cst_rows").select("code,descr").order("position"),
     supabase.from("cclass_rows").select("code,descr").order("position"),
@@ -66,10 +88,11 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Link href="/ibs?tab=dados" style={tabStyle(tab === "dados")}>Dados do IBS e CBS</Link>
         <Link href="/ibs?tab=produtos" style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
+        <Link href="/ibs?tab=servicos" style={tabStyle(tab === "servicos")}>Tributação dos serviços</Link>
         <Link href="/ibs?tab=arvore-ncm" style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
         {canCreate ? (
           <Link
-            href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
+            href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "servicos" ? "servico" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
             className="hv-btn"
             style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, borderRadius: 8, padding: "7px 14px" }}
           >
@@ -96,6 +119,12 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos produtos</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Alíquotas de referência do período de transição — clique no NCM para ver a árvore de classificação</div>
           <ProdutoTable rows={prod} cclassDescr={cclassDescr} total={prodTotal} page={page} pageSize={PAGE_SIZE} q={q} />
+        </section>
+      ) : tab === "servicos" ? (
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tributação dos serviços</div>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Classificação por NBS (Nomenclatura Brasileira de Serviços) — alíquotas de referência do período de transição</div>
+          <ServicoTable rows={serv} total={servTotal} page={page} pageSize={PAGE_SIZE} q={q} />
         </section>
       ) : (
         <section>

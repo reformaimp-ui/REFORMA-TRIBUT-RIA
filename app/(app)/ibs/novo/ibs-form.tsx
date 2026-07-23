@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { ImportPanel, type Rejected, type Validation } from "@/components/app/ImportPanel";
-import { addCclass, addCst, addCstLink, addProduto, finishImport, importChunk, type IbsState } from "../actions";
+import { addCclass, addCst, addCstLink, addProduto, addServico, finishImport, importChunk, type IbsState } from "../actions";
 
 type Code = { code: string; descr: string };
 const INP: React.CSSProperties = { width: "100%", fontSize: 13, padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" };
@@ -40,6 +40,14 @@ const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
       ["NCM", "Descrição", "CST", "cClassTrib", "Alíq. IBS", "Alíq. CBS", "Red. IBS", "Red. CBS"],
       ["1006.30.11", "Arroz beneficiado", "200", "200001", "17,7%", "8,8%", "100%", "100%"],
       ["3004.90.99", "Medicamento de uso humano", "210", "210001", "17,7%", "8,8%", "60%", "60%"],
+    ],
+  },
+  servico: {
+    filename: "modelo-servicos.xlsx",
+    rows: [
+      ["Descrição Item", "NBS", "Descrição NBS", "INDOP", "Local incidência IBS", "cClassTrib", "Nome cClassTrib"],
+      ["Análise e Desenvolvimento de Sistemas", "1.1502.10.00", "Serviços de projeto e desenvolvimento de aplicativos e programas não personalizados", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
+      ["Análise e Desenvolvimento de Sistemas", "1.1502.40.00", "Serviços de projeto e desenvolvimento de estruturas e conteúdo de bancos de dados", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
     ],
   },
   vinculo: {
@@ -100,6 +108,14 @@ function Batch({
         if (cstSet.size && cst && !cstSet.has(cst)) { rejected.push({ row: c, reason: `CST ${cst} inexistente` }); continue; }
         if (cclassSet.size && cclass && !cclassSet.has(cclass)) { rejected.push({ row: c, reason: `cClassTrib ${cclass} inexistente` }); continue; }
         seen.add(key);
+      } else if (type === "servico") {
+        // Chave real: NBS + cClassTrib — um NBS pode ter várias tributações.
+        const nbs = String(c[1] ?? "").trim();
+        const scclass = String(c[5] ?? "").trim();
+        const key = `${nbs}|${scclass}`;
+        if (seen.has(key)) { rejected.push({ row: c, reason: `NBS ${nbs} com a mesma tributação (cClassTrib ${scclass}) duplicado no arquivo` }); continue; }
+        if (cclassSet.size && scclass && !cclassSet.has(scclass)) { rejected.push({ row: c, reason: `cClassTrib ${scclass} inexistente` }); continue; }
+        seen.add(key);
       } else if (type === "vinculo") {
         const key = `${cst}|${cclass}`;
         if (seen.has(key)) { rejected.push({ row: c, reason: `Vínculo ${cst} × ${cclass} duplicado no arquivo` }); continue; }
@@ -111,7 +127,7 @@ function Batch({
     }
     return { valid, rejected };
   };
-  const tab = type === "produto" ? "produtos" : type === "ncm" ? "arvore-ncm" : "dados";
+  const tab = type === "produto" ? "produtos" : type === "servico" ? "servicos" : type === "ncm" ? "arvore-ncm" : "dados";
   return (
     <ImportPanel
       action={() => {}}
@@ -124,7 +140,7 @@ function Batch({
       template={TEMPLATES[type] ?? TEMPLATES.cst}
       format="xlsx"
       chunkImport={(cells, startPos) => importChunk(type, cells, startPos)}
-      validate={type === "produto" || type === "vinculo" ? validate : undefined}
+      validate={type === "produto" || type === "servico" || type === "vinculo" ? validate : undefined}
       onFinish={() => { void finishImport(); }}
       redirectTo={`/ibs?tab=${tab}`}
     />
@@ -133,11 +149,12 @@ function Batch({
 
 export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cstRows: Code[]; cclassRows: Code[] }) {
   const [type, setType] = useState(
-    initial === "produto" ? "produto" : initial === "cclass" ? "cclass" : initial === "vinculo" ? "vinculo" : initial === "ncm" ? "ncm" : "cst",
+    initial === "produto" ? "produto" : initial === "servico" ? "servico" : initial === "cclass" ? "cclass" : initial === "vinculo" ? "vinculo" : initial === "ncm" ? "ncm" : "cst",
   );
   const [cstState, cstAction, cstPending] = useActionState<IbsState, FormData>(addCst, {});
   const [ccState, ccAction, ccPending] = useActionState<IbsState, FormData>(addCclass, {});
   const [pState, pAction, pPending] = useActionState<IbsState, FormData>(addProduto, {});
+  const [sState, sAction, sPending] = useActionState<IbsState, FormData>(addServico, {});
   const [lkState, lkAction, lkPending] = useActionState<IbsState, FormData>(addCstLink, {});
   const cstSet = useMemo(() => new Set(cstRows.map((r) => r.code)), [cstRows]);
   const cclassSet = useMemo(() => new Set(cclassRows.map((r) => r.code)), [cclassRows]);
@@ -148,6 +165,7 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
         <div onClick={() => setType("cst")} style={pill(type === "cst")}>CST</div>
         <div onClick={() => setType("cclass")} style={pill(type === "cclass")}>cClassTrib</div>
         <div onClick={() => setType("produto")} style={pill(type === "produto")}>Tributação de produto</div>
+        <div onClick={() => setType("servico")} style={pill(type === "servico")}>Tributação de serviço</div>
         <div onClick={() => setType("vinculo")} style={pill(type === "vinculo")}>Vínculo CST × cClassTrib</div>
         <div onClick={() => setType("ncm")} style={pill(type === "ncm")}>Árvore de NCM</div>
       </div>
@@ -216,6 +234,41 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
             <button type="submit" disabled={pPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: pPending ? 0.7 : 1 }}>Adicionar produto</button>
           </form>
           <Batch type="produto" placeholder={"1006.30.11\tArroz beneficiado\t200\t200001\t17,7%\t8,8%\t100%\t100%"} desc={<span>Uma linha por produto — colunas <b>NCM, Descrição, CST, cClassTrib, Alíq. IBS, Alíq. CBS, Red. IBS, Red. CBS</b> — ou importe um .xlsx.</span>} cstSet={cstSet} cclassSet={cclassSet} />
+        </div>
+      ) : null}
+
+      {type === "servico" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+          <form action={sAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".06em" }}>Cadastro individual</div>
+            <div><div style={LBL}>Descrição item</div><input className="fc" name="item" placeholder="Ex.: Análise e Desenvolvimento de Sistemas" autoFocus style={INP} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div><div style={LBL}>NBS</div><input className="fc" name="nbs" placeholder="Ex.: 1.1502.10.00" style={MONO} /></div>
+              <div><div style={LBL}>INDOP</div><input className="fc" name="indop" placeholder="Ex.: 100301" style={MONO} /></div>
+            </div>
+            <div><div style={LBL}>Descrição NBS</div><input className="fc" name="nbs_descr" placeholder="Descrição do serviço" style={INP} /></div>
+            <div><div style={LBL}>Local incidência IBS</div><input className="fc" name="local_ibs" placeholder="Ex.: Domicílio principal do adquirente" style={INP} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={LBL}>cClassTrib</div>
+                {cclassRows.length ? (
+                  <select name="cclass" defaultValue={cclassRows[0]?.code} style={INP}>{cclassRows.map((r) => <option key={r.code} value={r.code}>{r.code} — {r.descr}</option>)}</select>
+                ) : (
+                  <input className="fc" name="cclass" placeholder="Ex.: 000001" style={MONO} />
+                )}
+              </div>
+              <div><div style={LBL}>Nome cClassTrib</div><input className="fc" name="cclass_nome" placeholder="Ex.: Situações tributadas integralmente pelo IBS e CBS" style={INP} /></div>
+            </div>
+            {sState.error ? <div style={{ fontSize: 12, color: "#b3402e" }}>{sState.error}</div> : null}
+            <button type="submit" disabled={sPending} className="hv-btn" style={{ ...BTN, marginTop: 4, opacity: sPending ? 0.7 : 1 }}>Adicionar serviço</button>
+          </form>
+          <Batch
+            type="servico"
+            placeholder={"Análise e Desenvolvimento de Sistemas\t1.1502.10.00\tServiços de projeto e desenvolvimento de aplicativos\t100301\tDomicílio principal do adquirente\t000001\tSituações tributadas integralmente pelo IBS e CBS"}
+            desc={<span>Uma linha por serviço — colunas <b>Descrição Item, NBS, Descrição NBS, INDOP, Local incidência IBS, cClassTrib, Nome cClassTrib</b> — ou importe um .xlsx.</span>}
+            cstSet={cstSet}
+            cclassSet={cclassSet}
+          />
         </div>
       ) : null}
 

@@ -58,6 +58,27 @@ export async function addProduto(_p: IbsState, fd: FormData): Promise<IbsState> 
   redirect("/ibs?tab=produtos");
 }
 
+export async function addServico(_p: IbsState, fd: FormData): Promise<IbsState> {
+  const nbs = String(fd.get("nbs") || "").trim();
+  if (!nbs) return { error: "Informe o NBS." };
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("servico_rows").upsert(
+    {
+      office_id: office.id, item: String(fd.get("item") || "").trim(),
+      nbs, nbs_digits: onlyDigits(nbs), nbs_descr: String(fd.get("nbs_descr") || "").trim(),
+      indop: String(fd.get("indop") || "").trim(), local_ibs: String(fd.get("local_ibs") || "").trim(),
+      cclass: String(fd.get("cclass") || "").trim(), cclass_nome: String(fd.get("cclass_nome") || "").trim(),
+      position: await nextPos("servico_rows", office.id),
+    },
+    { onConflict: "office_id,nbs,cclass" },
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/ibs");
+  redirect("/ibs?tab=servicos");
+}
+
 export async function addCstLink(_p: IbsState, fd: FormData): Promise<IbsState> {
   const cst = String(fd.get("cst") || "").trim();
   const cclass = String(fd.get("cclass") || "").trim();
@@ -118,6 +139,28 @@ export async function importChunk(type: string, cells: string[][], startPos: num
     );
     if (!rows.length) return { inserted: 0 };
     const { error } = await supabase.from("produto_rows").upsert(rows, { onConflict: "office_id,ncm,cst,cclass" });
+    return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
+  }
+
+  if (type === "servico") {
+    // Chave real: um NBS pode ter várias tributações (cClassTrib diferentes).
+    const rows = dedupeBy(
+      cells
+        .map((c, i) => {
+          const nbs = String(c[1] ?? "").trim();
+          return {
+            office_id: oid, item: String(c[0] ?? "").trim(), nbs, nbs_digits: onlyDigits(nbs),
+            nbs_descr: String(c[2] ?? "").trim(), indop: String(c[3] ?? "").trim(),
+            local_ibs: String(c[4] ?? "").trim(), cclass: String(c[5] ?? "").trim(),
+            cclass_nome: String(c[6] ?? "").trim(),
+            position: startPos + i,
+          };
+        })
+        .filter((r) => r.nbs),
+      (r) => `${r.nbs}|${r.cclass}`,
+    );
+    if (!rows.length) return { inserted: 0 };
+    const { error } = await supabase.from("servico_rows").upsert(rows, { onConflict: "office_id,nbs,cclass" });
     return error ? { inserted: 0, error: error.message } : { inserted: rows.length };
   }
 

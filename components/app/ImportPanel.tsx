@@ -10,7 +10,7 @@ export type ChunkResult = { inserted: number; error?: string };
 export type Rejected = { row: string[]; reason: string };
 export type Validation = { valid: string[][]; rejected: Rejected[] };
 
-const HEADER_WORDS = /^(nome|cst|cclasstrib|ncm|c[oó]digo|code|descri[cç][aã]o)$/i;
+const HEADER_WORDS = /^(nome|cst|cclasstrib|ncm|nbs|indop|c[oó]digo|code|descri[cç][aã]o(\s*(item|ncm|nbs))?)$/i;
 const CHUNK_SIZE = 500;
 
 /**
