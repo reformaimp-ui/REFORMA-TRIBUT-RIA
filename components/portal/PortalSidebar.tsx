@@ -6,7 +6,8 @@ import { ACCENT } from "@/lib/design";
 import { logout } from "@/app/(app)/actions";
 
 const NAV = [
-  { href: "/pesquisa", label: "Pesquisar", icon: "search" },
+  { href: "/pesquisa", label: "Pesquisar produtos", icon: "search" },
+  { href: "/pesquisa/servicos", label: "Pesquisar serviços", icon: "service" },
   { href: "/pesquisa/lote", label: "Pesquisa em lote", icon: "batch" },
   { href: "/pesquisa/configuracoes", label: "Configurações", icon: "settings" },
 ];
@@ -18,6 +19,12 @@ function Icon({ name }: { name: string }) {
         <svg width="15" height="15" viewBox="0 0 15 15">
           <circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
           <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      );
+    case "service":
+      return (
+        <svg width="15" height="15" viewBox="0 0 15 15">
+          <path d="M2 12.5l3.2-3.2M9.3 6.7a2.6 2.6 0 10-3.6-3.6 2.6 2.6 0 003.6 3.6zM9.3 6.7L13 10.4a1.2 1.2 0 01-1.7 1.7L7.6 8.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "batch":

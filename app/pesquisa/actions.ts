@@ -55,6 +55,69 @@ export async function searchProdutoPublic(term: string): Promise<ProdutoResult[]
   return enrich(supabase, (data ?? []) as RawRow[]);
 }
 
+export type ServicoResult = {
+  item: string;
+  nbs: string;
+  nbs_descr: string;
+  indop: string;
+  local_ibs: string;
+  cclass: string;
+  cclass_nome: string;
+  cst: string;
+  cstDescr: string;
+  red_ibs: string;
+  red_cbs: string;
+};
+
+type RawServicoRow = {
+  item: string; nbs: string; nbs_digits?: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string;
+};
+
+// CST e % de redução do serviço vêm do produto cadastrado com o mesmo
+// cClassTrib — mesma lógica de derivação usada na tela interna (ibs/page.tsx).
+async function enrichServico(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: RawServicoRow[],
+): Promise<ServicoResult[]> {
+  if (!rows.length) return [];
+  const cclasses = Array.from(new Set(rows.map((r) => r.cclass).filter(Boolean)));
+  const { data: prodRows } = cclasses.length
+    ? await supabase.from("produto_rows").select("cclass,cst,red_ibs,red_cbs").in("cclass", cclasses)
+    : { data: [] as { cclass: string; cst: string; red_ibs: string; red_cbs: string }[] };
+  const byCclass: Record<string, { cst: string; red_ibs: string; red_cbs: string }> = {};
+  for (const r of prodRows ?? []) if (!byCclass[r.cclass]) byCclass[r.cclass] = { cst: r.cst, red_ibs: r.red_ibs, red_cbs: r.red_cbs };
+  const csts = Array.from(new Set(Object.values(byCclass).map((r) => r.cst).filter(Boolean)));
+  const { data: cstRows } = csts.length
+    ? await supabase.from("cst_rows").select("code,descr").in("code", csts)
+    : { data: [] as { code: string; descr: string }[] };
+  const cstMap = Object.fromEntries((cstRows ?? []).map((r) => [r.code, r.descr]));
+  return rows.map((r) => {
+    const ref = byCclass[r.cclass];
+    return {
+      item: r.item, nbs: r.nbs, nbs_descr: r.nbs_descr, indop: r.indop, local_ibs: r.local_ibs,
+      cclass: r.cclass, cclass_nome: r.cclass_nome,
+      cst: ref?.cst || "", cstDescr: ref?.cst ? cstMap[ref.cst] || "" : "",
+      red_ibs: ref?.red_ibs || "", red_cbs: ref?.red_cbs || "",
+    };
+  });
+}
+
+/** Busca por NBS (prefixo/substring, com ou sem pontuação), Descrição NBS ou Descrição item. */
+export async function searchServicoPublic(term: string): Promise<ServicoResult[]> {
+  const raw = term.trim().replace(/[,()]/g, "");
+  if (!raw) return [];
+  const digits = raw.replace(/\D/g, "");
+  const supabase = await createClient();
+  const patterns = [`item.ilike.%${raw}%`, `nbs.ilike.%${raw}%`, `nbs_descr.ilike.%${raw}%`];
+  if (digits && digits !== raw) patterns.push(`nbs_digits.ilike.${digits}%`);
+  const { data } = await supabase
+    .from("servico_rows")
+    .select("item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome")
+    .or(patterns.join(","))
+    .limit(25);
+  return enrichServico(supabase, (data ?? []) as RawServicoRow[]);
+}
+
 /** Busca em lote: só aceita NCM (sem descrição), match exato por dígitos. */
 export async function searchProdutosByNcmBatch(rawNcms: string[]): Promise<{ ncm: string; results: ProdutoResult[] }[]> {
   const digitsList = Array.from(new Set(rawNcms.map((n) => n.replace(/\D/g, "")).filter(Boolean)));
