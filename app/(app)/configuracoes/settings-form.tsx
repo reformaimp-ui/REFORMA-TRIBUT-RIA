@@ -51,7 +51,7 @@ function Msg({ state }: { state: SettingsState }) {
   return null;
 }
 
-export function SettingsForm({ member, office }: { member: Member; office: Office }) {
+export function SettingsForm({ member, office, userId }: { member: Member; office: Office; userId: string }) {
   const [nameState, nameAction, namePending] = useActionState<SettingsState, FormData>(updateName, {});
   const [pwState, pwAction, pwPending] = useActionState<SettingsState, FormData>(changePassword, {});
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url);
@@ -64,7 +64,9 @@ export function SettingsForm({ member, office }: { member: Member; office: Offic
     setAvatarState({});
     const supabase = createClient();
     const ext = file.name.split(".").pop() || "jpg";
-    const path = `${member.id}/avatar.${ext}`;
+    // A pasta precisa ser o auth.uid() (não members.id) — é o que a policy de
+    // storage.objects exige: (storage.foldername(name))[1] = auth.uid()::text.
+    const path = `${userId}/avatar.${ext}`;
     const { error: upErr } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true, cacheControl: "3600" });
