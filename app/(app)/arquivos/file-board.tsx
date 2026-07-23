@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { ACCENT } from "@/lib/design";
 import { LiveMdEditor } from "@/components/app/LiveMdEditor";
 import { mdToHtml } from "@/lib/markdown";
+import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   createFolder,
   createTextDoc,
@@ -14,6 +15,8 @@ import {
   updateTextDoc,
   uploadFile,
 } from "./actions";
+
+const STORAGE_BUCKET = "documents";
 
 export type DocRow = {
   id: string;
@@ -174,7 +177,7 @@ function PromptModal({
   );
 }
 
-export function FileBoard({ docs, perms }: { docs: DocRow[]; perms: Perms }) {
+export function FileBoard({ docs, perms, officeId }: { docs: DocRow[]; perms: Perms; officeId: string }) {
   const [path, setPath] = useState<string[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
@@ -282,12 +285,31 @@ export function FileBoard({ docs, perms }: { docs: DocRow[]; perms: Perms }) {
     const list = Array.from(files);
     if (!list.length) return;
     startTransition(async () => {
+      const supabase = createBrowserSupabaseClient();
       for (const f of list) {
+        const docId = crypto.randomUUID();
+        const safeName = f.name.replace(/[^\w.\-]+/g, "_");
+        const path = `${officeId}/${docId}-${safeName}`;
+        const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, f, {
+          contentType: f.type || "application/octet-stream",
+          upsert: false,
+        });
+        if (upErr) {
+          setUploadError(upErr.message);
+          continue;
+        }
         const fd = new FormData();
-        fd.set("file", f);
+        fd.set("docId", docId);
+        fd.set("storagePath", path);
+        fd.set("name", f.name);
+        fd.set("mimeType", f.type || "");
+        fd.set("sizeBytes", String(f.size));
         if (currentFolderId) fd.set("parentId", currentFolderId);
         const err = await uploadFile(fd);
-        if (err) setUploadError(err);
+        if (err) {
+          setUploadError(err);
+          await supabase.storage.from(STORAGE_BUCKET).remove([path]);
+        }
       }
     });
   };

@@ -68,34 +68,36 @@ export async function moveDocument(fd: FormData) {
   revalidatePath("/arquivos");
 }
 
+/**
+ * O arquivo em si já foi enviado direto do browser pro Supabase Storage
+ * (bypassa o servidor) — aqui só registramos a linha em `documents`. Rotear
+ * o arquivo inteiro por uma Server Action esbarra no limite de payload das
+ * funções da Vercel (4.5 MB), bem menor que o bodySizeLimit do Next.
+ */
 export async function uploadFile(fd: FormData): Promise<string | null> {
-  const file = fd.get("file") as File | null;
-  if (!file || !file.size) return "Selecione um arquivo.";
+  const docId = String(fd.get("docId") || "");
+  const storagePath = String(fd.get("storagePath") || "");
+  const name = String(fd.get("name") || "").trim();
+  if (!docId || !storagePath || !name) return "Dados de upload inválidos.";
   const parentId = String(fd.get("parentId") || "") || null;
+  const mimeType = String(fd.get("mimeType") || "") || null;
+  const sizeBytes = Number(fd.get("sizeBytes") || 0) || null;
   const { office, member } = await getContext();
   if (!canDo(member, "arquivos", "create")) return "Sem permissão para enviar arquivos.";
   const supabase = await createClient();
-  const docId = crypto.randomUUID();
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-  const path = `${office.id}/${docId}-${safeName}`;
-  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-  if (upErr) return upErr.message;
   const { error: insErr } = await supabase.from("documents").insert({
     id: docId,
     office_id: office.id,
     parent_id: parentId,
     kind: "file",
-    name: file.name,
-    storage_path: path,
-    mime_type: file.type || null,
-    size_bytes: file.size,
+    name,
+    storage_path: storagePath,
+    mime_type: mimeType,
+    size_bytes: sizeBytes,
     created_by: member.id,
   });
   if (insErr) {
-    await supabase.storage.from(BUCKET).remove([path]);
+    await supabase.storage.from(BUCKET).remove([storagePath]);
     return insErr.message;
   }
   revalidatePath("/arquivos");
