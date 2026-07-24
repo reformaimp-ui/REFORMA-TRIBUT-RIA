@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { TableSearch } from "@/components/app/TableSearch";
 import { NcmTreeView } from "@/components/app/NcmTreeView";
+import { Spinner } from "@/components/app/Spinner";
 import { searchNcm, type NcmNode } from "@/app/(app)/ibs/actions";
 
 export function NcmExplorer() {
@@ -33,7 +34,12 @@ export function NcmExplorer() {
       <div>
         <TableSearch value={q} onChange={setQ} placeholder="Código ou descrição do NCM…" />
         <div style={{ marginTop: 10, background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, maxHeight: 480, overflow: "auto" }}>
-          {searching ? <div style={{ padding: 14, fontSize: 12, color: "#8a8d98" }}>Buscando…</div> : null}
+          {searching ? (
+            <div style={{ padding: 14, display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#8a8d98" }}>
+              <Spinner size={12} />
+              Buscando…
+            </div>
+          ) : null}
           {!searching && q.trim() && !results.length ? (
             <div style={{ padding: 14, fontSize: 12, color: "#a0a3ad", fontStyle: "italic" }}>Nenhum NCM encontrado.</div>
           ) : null}

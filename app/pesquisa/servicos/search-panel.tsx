@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { friendlyTaxSummary } from "@/lib/taxSummary";
+import { Spinner } from "@/components/app/Spinner";
 import { searchServicoPublic, type ServicoResult } from "../actions";
 
 export function ServicoSearchPanel() {
@@ -36,14 +37,15 @@ export function ServicoSearchPanel() {
           type="submit"
           disabled={loading || !term.trim()}
           className="hv-btn"
-          style={{ fontSize: 13.5, fontWeight: 700, color: "#fff", background: ACCENT, padding: "0 24px", borderRadius: 12, border: "none", cursor: "pointer", opacity: loading || !term.trim() ? 0.6 : 1 }}
+          style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "#fff", background: ACCENT, padding: "0 24px", borderRadius: 12, border: "none", cursor: "pointer", opacity: loading || !term.trim() ? 0.6 : 1 }}
         >
+          {loading ? <Spinner size={13} color="#fff" /> : null}
           {loading ? "Buscando…" : "Pesquisar"}
         </button>
       </form>
 
       {results && !selected ? (
-        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="stagger" style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
           {results.length === 0 ? (
             <div style={{ fontSize: 13, color: "#a0a3ad", fontStyle: "italic", textAlign: "center", padding: 24 }}>
               Nenhum serviço encontrado para “{term}”.
@@ -66,7 +68,7 @@ export function ServicoSearchPanel() {
       ) : null}
 
       {selected ? (
-        <div style={{ marginTop: 24 }}>
+        <div className="animate-fadeup" style={{ marginTop: 24 }}>
           {results && results.length > 1 ? (
             <button
               onClick={() => setSelected(null)}

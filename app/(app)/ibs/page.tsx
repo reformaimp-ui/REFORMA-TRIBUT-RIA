@@ -105,11 +105,11 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   return (
     <div className="stagger" style={{ padding: "20px 22px", height: "100%", overflow: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Link href="/ibs?tab=dados" style={tabStyle(tab === "dados")}>Dados do IBS e CBS</Link>
-        <Link href="/ibs?tab=produtos" style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
-        <Link href="/ibs?tab=servicos" style={tabStyle(tab === "servicos")}>Tributação dos serviços</Link>
-        <Link href="/ibs?tab=arvore-ncm" style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
-        <Link href="/ibs?tab=assistente" style={tabStyle(tab === "assistente")}>Assistente IA</Link>
+        <Link href="/ibs?tab=dados" className={tab === "dados" ? undefined : "hv-light"} style={tabStyle(tab === "dados")}>Dados do IBS e CBS</Link>
+        <Link href="/ibs?tab=produtos" className={tab === "produtos" ? undefined : "hv-light"} style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
+        <Link href="/ibs?tab=servicos" className={tab === "servicos" ? undefined : "hv-light"} style={tabStyle(tab === "servicos")}>Tributação dos serviços</Link>
+        <Link href="/ibs?tab=arvore-ncm" className={tab === "arvore-ncm" ? undefined : "hv-light"} style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
+        <Link href="/ibs?tab=assistente" className={tab === "assistente" ? undefined : "hv-light"} style={tabStyle(tab === "assistente")}>Assistente IA</Link>
         {canCreate && tab !== "assistente" ? (
           <Link
             href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "servicos" ? "servico" : tab === "arvore-ncm" ? "ncm" : "cst"}`}

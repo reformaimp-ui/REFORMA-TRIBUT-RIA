@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { mdToHtml } from "@/lib/markdown";
+import { Spinner } from "@/components/app/Spinner";
 import { askTaxAssistant, type AiChatMessage } from "@/lib/aiAssistant";
 
 const SUGESTOES = [
@@ -62,7 +63,7 @@ export function TaxAiChat() {
             <div style={{ fontSize: 12.5, color: "#8a8d98", lineHeight: 1.6 }}>
               Descreva o produto ou serviço que você vende ou presta. O assistente vai identificar o NCM ou NBS mais provável e a tributação de IBS e CBS — fazendo perguntas quando precisar de mais detalhes.
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {SUGESTOES.map((s) => (
                 <button
                   key={s}
@@ -84,6 +85,7 @@ export function TaxAiChat() {
             m.role === "user" ? (
               <div
                 key={i}
+                className="animate-fadeup"
                 style={{
                   alignSelf: "flex-end", maxWidth: "85%", background: ACCENT, color: "#fff",
                   borderRadius: 12, padding: "10px 14px", fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap",
@@ -94,7 +96,7 @@ export function TaxAiChat() {
             ) : (
               <div
                 key={i}
-                className="md-preview"
+                className="md-preview animate-fadeup"
                 style={{ alignSelf: "flex-start", maxWidth: "85%", background: "#f7f7f4", borderRadius: 12, padding: "10px 14px" }}
                 dangerouslySetInnerHTML={{ __html: mdToHtml(m.text) }}
               />
@@ -102,7 +104,8 @@ export function TaxAiChat() {
           )
         )}
         {loading ? (
-          <div style={{ alignSelf: "flex-start", fontSize: 12, color: "#a0a3ad", fontStyle: "italic" }}>
+          <div className="animate-fadeup" style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#a0a3ad", fontStyle: "italic" }}>
+            <Spinner size={12} />
             Consultando…
           </div>
         ) : null}

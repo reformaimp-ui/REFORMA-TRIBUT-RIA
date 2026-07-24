@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { friendlyTaxSummary } from "@/lib/taxSummary";
+import { Spinner } from "@/components/app/Spinner";
 import { searchProdutosByNcmBatch, type ProdutoResult } from "../actions";
 
 type Row = { ncm: string; results: ProdutoResult[] };
@@ -44,16 +45,17 @@ export function BatchPanel() {
           onClick={search}
           disabled={loading || !ncms.length}
           className="hv-btn"
-          style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 700, color: "#fff", background: ACCENT, padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer", opacity: loading || !ncms.length ? 0.6 : 1 }}
+          style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", fontSize: 12.5, fontWeight: 700, color: "#fff", background: ACCENT, padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer", opacity: loading || !ncms.length ? 0.6 : 1 }}
         >
+          {loading ? <Spinner size={12} color="#fff" /> : null}
           {loading ? "Buscando…" : "Pesquisar em lote"}
         </button>
       </div>
 
       {rows ? (
-        <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="stagger" style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
           {rows.map((row, i) => (
-            <div key={`${row.ncm}-${i}`} style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "14px 18px" }}>
+            <div key={`${row.ncm}-${i}`} className="hv-inbdr" style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "14px 18px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12.5, fontWeight: 700, color: ACCENT }}>{row.ncm}</div>
                 {row.results.length === 0 ? <div style={{ fontSize: 12, color: "#a0a3ad", fontStyle: "italic" }}>Não encontrado</div> : null}

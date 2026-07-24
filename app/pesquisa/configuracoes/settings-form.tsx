@@ -2,12 +2,13 @@
 
 import { useActionState } from "react";
 import { ACCENT } from "@/lib/design";
+import { Spinner } from "@/components/app/Spinner";
 import { changePassword, type SettingsState } from "@/app/(app)/configuracoes/actions";
 
 const LBL: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 };
 const INP: React.CSSProperties = { width: "100%", fontSize: 13, padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" };
 const CARD: React.CSSProperties = { background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: 22, display: "flex", flexDirection: "column", gap: 14, maxWidth: 480 };
-const BTN: React.CSSProperties = { alignSelf: "flex-start", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer" };
+const BTN: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-start", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer" };
 
 function Msg({ state }: { state: SettingsState }) {
   if (state.error) return <div style={{ fontSize: 12, color: "#b3402e" }}>{state.error}</div>;
@@ -54,6 +55,7 @@ export function PortalSettingsForm({ client, officeName }: { client: { name: str
           </div>
           <Msg state={pwState} />
           <button type="submit" disabled={pwPending} className="hv-btn" style={{ ...BTN, opacity: pwPending ? 0.7 : 1 }}>
+            {pwPending ? <Spinner size={12} color="#fff" /> : null}
             {pwPending ? "Alterando…" : "Alterar senha"}
           </button>
         </form>

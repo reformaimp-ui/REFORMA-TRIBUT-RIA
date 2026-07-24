@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ACCENT } from "@/lib/design";
+import { Spinner } from "@/components/app/Spinner";
 import { getNcmTree, type NcmNode } from "@/app/(app)/ibs/actions";
 
 export function NcmTreeView({ code }: { code: string }) {
@@ -23,7 +24,14 @@ export function NcmTreeView({ code }: { code: string }) {
     };
   }, [code]);
 
-  if (loading) return <div style={{ fontSize: 12.5, color: "#8a8d98", padding: "8px 0" }}>Carregando árvore…</div>;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#8a8d98", padding: "8px 0" }}>
+        <Spinner size={12} />
+        Carregando árvore…
+      </div>
+    );
+  }
 
   if (!chain.length) {
     return (
@@ -34,7 +42,7 @@ export function NcmTreeView({ code }: { code: string }) {
   }
 
   return (
-    <div>
+    <div className="animate-fadeup">
       <div style={{ display: "flex", flexDirection: "column" }}>
         {chain.map((node, i) => {
           const isLast = i === chain.length - 1;

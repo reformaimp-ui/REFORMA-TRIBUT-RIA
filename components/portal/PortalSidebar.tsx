@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { logout } from "@/app/(app)/actions";
 
@@ -56,6 +57,31 @@ function Icon({ name }: { name: string }) {
 export function PortalSidebar({ officeName, clientName, aiEnabled }: { officeName: string; clientName: string; aiEnabled: boolean }) {
   const pathname = usePathname();
   const nav = aiEnabled ? NAV : NAV.filter((n) => n.href !== "/pesquisa/assistente");
+  const navRef = useRef<HTMLElement>(null);
+  const [pill, setPill] = useState<{ top: number; height: number; visible: boolean; animate: boolean }>({
+    top: 0,
+    height: 0,
+    visible: false,
+    animate: false,
+  });
+
+  // Move o pill deslizante até o item ativo a cada navegação — mesmo padrão de components/app/Sidebar.tsx.
+  useLayoutEffect(() => {
+    const navEl = navRef.current;
+    if (!navEl) return;
+    const active = navEl.querySelector<HTMLElement>('[data-active="true"]');
+    if (!active) {
+      setPill((p) => ({ ...p, visible: false }));
+      return;
+    }
+    setPill((p) => ({
+      top: active.offsetTop,
+      height: active.offsetHeight,
+      visible: true,
+      animate: p.visible, // primeira renderização posiciona sem animar
+    }));
+  }, [pathname]);
+
   return (
     <aside
       style={{
@@ -72,18 +98,37 @@ export function PortalSidebar({ officeName, clientName, aiEnabled }: { officeNam
           <div style={{ fontSize: 10.5, color: "#8a8d98" }}>Pesquisa de tributação</div>
         </div>
       </div>
-      <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <nav ref={navRef} style={{ display: "flex", flexDirection: "column", gap: 2, position: "relative" }}>
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: pill.top,
+            height: pill.height,
+            borderRadius: 8,
+            background: "#eef1ff",
+            boxShadow: `inset 2.5px 0 0 ${ACCENT}`,
+            opacity: pill.visible ? 1 : 0,
+            transition: pill.animate
+              ? "top .28s cubic-bezier(.3,.9,.3,1), height .28s cubic-bezier(.3,.9,.3,1), opacity .15s ease"
+              : "opacity .15s ease",
+            pointerEvents: "none",
+          }}
+        />
         {nav.map((n) => {
           const active = pathname === n.href;
           return (
             <Link
               key={n.href}
               href={n.href}
+              data-active={active ? "true" : "false"}
               className={active ? undefined : "hv-nav"}
               style={{
                 display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8,
-                fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-                color: active ? ACCENT : "#4b4e58", background: active ? "#eef1ff" : "transparent",
+                fontSize: 12.5, fontWeight: 600, cursor: "pointer", position: "relative",
+                color: active ? ACCENT : "#4b4e58",
               }}
             >
               <Icon name={n.icon} />
