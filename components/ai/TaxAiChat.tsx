@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ACCENT } from "@/lib/design";
+import { mdToHtml } from "@/lib/markdown";
 import { askTaxAssistant, type AiChatMessage } from "@/lib/aiAssistant";
 
 const SUGESTOES = [
@@ -48,7 +49,7 @@ export function TaxAiChat() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", maxHeight: 640 }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       <div
         ref={listRef}
         style={{
@@ -79,24 +80,26 @@ export function TaxAiChat() {
             </div>
           </div>
         ) : (
-          messages.map((m, i) => (
-            <div
-              key={i}
-              style={{
-                alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                maxWidth: "85%",
-                background: m.role === "user" ? ACCENT : "#f7f7f4",
-                color: m.role === "user" ? "#fff" : "#1c1e26",
-                borderRadius: 12,
-                padding: "10px 14px",
-                fontSize: 13,
-                lineHeight: 1.55,
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {m.text}
-            </div>
-          ))
+          messages.map((m, i) =>
+            m.role === "user" ? (
+              <div
+                key={i}
+                style={{
+                  alignSelf: "flex-end", maxWidth: "85%", background: ACCENT, color: "#fff",
+                  borderRadius: 12, padding: "10px 14px", fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap",
+                }}
+              >
+                {m.text}
+              </div>
+            ) : (
+              <div
+                key={i}
+                className="md-preview"
+                style={{ alignSelf: "flex-start", maxWidth: "85%", background: "#f7f7f4", borderRadius: 12, padding: "10px 14px" }}
+                dangerouslySetInnerHTML={{ __html: mdToHtml(m.text) }}
+              />
+            ),
+          )
         )}
         {loading ? (
           <div style={{ alignSelf: "flex-start", fontSize: 12, color: "#a0a3ad", fontStyle: "italic" }}>
