@@ -9,6 +9,7 @@ const NAV = [
   { href: "/pesquisa", label: "Pesquisar produtos", icon: "search" },
   { href: "/pesquisa/servicos", label: "Pesquisar serviços", icon: "service" },
   { href: "/pesquisa/lote", label: "Pesquisa em lote", icon: "batch" },
+  { href: "/pesquisa/assistente", label: "Assistente IA", icon: "ai" },
   { href: "/pesquisa/configuracoes", label: "Configurações", icon: "settings" },
 ];
 
@@ -35,6 +36,13 @@ function Icon({ name }: { name: string }) {
           <rect x="1" y="10.5" width="10" height="3" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
         </svg>
       );
+    case "ai":
+      return (
+        <svg width="15" height="15" viewBox="0 0 15 15">
+          <path d="M7.5 1.5l1.3 3.7 3.7 1.3-3.7 1.3-1.3 3.7-1.3-3.7L2.5 6.5l3.7-1.3z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+          <path d="M12 10.5l.55 1.55L14.1 12.6l-1.55.55L12 14.7l-.55-1.55L9.9 12.6l1.55-.55z" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+        </svg>
+      );
     default:
       return (
         <svg width="15" height="15" viewBox="0 0 15 15">
@@ -45,8 +53,9 @@ function Icon({ name }: { name: string }) {
   }
 }
 
-export function PortalSidebar({ officeName, clientName }: { officeName: string; clientName: string }) {
+export function PortalSidebar({ officeName, clientName, aiEnabled }: { officeName: string; clientName: string; aiEnabled: boolean }) {
   const pathname = usePathname();
+  const nav = aiEnabled ? NAV : NAV.filter((n) => n.href !== "/pesquisa/assistente");
   return (
     <aside
       style={{
@@ -64,7 +73,7 @@ export function PortalSidebar({ officeName, clientName }: { officeName: string; 
         </div>
       </div>
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV.map((n) => {
+        {nav.map((n) => {
           const active = pathname === n.href;
           return (
             <Link

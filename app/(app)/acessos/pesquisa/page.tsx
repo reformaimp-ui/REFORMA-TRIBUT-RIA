@@ -6,11 +6,11 @@ import { SearchClientPanel, type SearchClientRow } from "./search-client-panel";
 export const dynamic = "force-dynamic";
 
 export default async function AcessoPesquisaPage() {
-  const { member } = await getContext();
+  const { member, office } = await getContext();
   if (member.role !== "admin") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { data } = await supabase.from("search_clients").select("id,name,email,active").order("created_at");
+  const { data } = await supabase.from("search_clients").select("id,name,email,active,ai_enabled").order("created_at");
   const searchClients = (data ?? []) as SearchClientRow[];
 
   return (
@@ -19,7 +19,7 @@ export default async function AcessoPesquisaPage() {
         <div style={{ fontSize: 13, fontWeight: 700 }}>Acessos</div>
         <div style={{ fontSize: 11.5, color: "#8a8d98", marginTop: 2 }}>Acesso de pesquisa para clientes</div>
       </div>
-      <SearchClientPanel clients={searchClients} />
+      <SearchClientPanel clients={searchClients} officeAiEnabled={office.ai_search_enabled} />
     </div>
   );
 }

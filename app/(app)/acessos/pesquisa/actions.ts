@@ -71,3 +71,25 @@ export async function removeSearchClient(fd: FormData) {
   await supabase.from("search_clients").delete().eq("id", id);
   revalidatePath("/acessos/pesquisa");
 }
+
+/** Liga/desliga o Assistente IA para um cliente de pesquisa específico. */
+export async function toggleSearchClientAi(fd: FormData) {
+  const id = String(fd.get("id") || "");
+  const aiEnabled = fd.get("aiEnabled") === "true";
+  if (!id) return;
+  const { member } = await getContext();
+  if (member.role !== "admin") return;
+  const supabase = await createClient();
+  await supabase.from("search_clients").update({ ai_enabled: !aiEnabled }).eq("id", id);
+  revalidatePath("/acessos/pesquisa");
+}
+
+/** Liga/desliga o Assistente IA para todo o escritório (chave-geral do portal). */
+export async function toggleOfficeAi(fd: FormData) {
+  const aiEnabled = fd.get("aiEnabled") === "true";
+  const { member, office } = await getContext();
+  if (member.role !== "admin") return;
+  const supabase = await createClient();
+  await supabase.from("offices").update({ ai_search_enabled: !aiEnabled }).eq("id", office.id);
+  revalidatePath("/acessos/pesquisa");
+}

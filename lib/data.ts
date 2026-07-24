@@ -16,7 +16,7 @@ export type Member = {
   active: boolean;
 };
 
-export type Office = { id: string; name: string; cnpj: string | null; accent: string };
+export type Office = { id: string; name: string; cnpj: string | null; accent: string; ai_search_enabled: boolean };
 
 export type AppContext = {
   userId: string;
@@ -49,7 +49,7 @@ export const getContext = cache(async (): Promise<AppContext> => {
       .from("members")
       .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions,active")
       .order("created_at"),
-    supabase.from("offices").select("id,name,cnpj,accent"),
+    supabase.from("offices").select("id,name,cnpj,accent,ai_search_enabled"),
   ]);
 
   let member = (members ?? []).find((m) => m.user_id === user.id);
@@ -69,7 +69,7 @@ export const getContext = cache(async (): Promise<AppContext> => {
           .from("members")
           .select("id,name,email,ini,color,cargo,role,office_id,user_id,avatar_url,permissions,active")
           .order("created_at"),
-        supabase.from("offices").select("id,name,cnpj,accent"),
+        supabase.from("offices").select("id,name,cnpj,accent,ai_search_enabled"),
       ]);
       member = (members ?? []).find((m) => m.user_id === user.id);
     }

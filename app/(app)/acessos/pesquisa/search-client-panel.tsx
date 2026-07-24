@@ -3,16 +3,16 @@
 import { useActionState } from "react";
 import { ACCENT } from "@/lib/design";
 import { ConfirmForm } from "@/components/app/ConfirmForm";
-import { addSearchClient, removeSearchClient, toggleSearchClient, type SearchClientState } from "./actions";
+import { addSearchClient, removeSearchClient, toggleSearchClient, toggleSearchClientAi, toggleOfficeAi, type SearchClientState } from "./actions";
 
 const LBL: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 };
 const INP: React.CSSProperties = { width: "100%", fontSize: 13, padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" };
 const CARD: React.CSSProperties = { background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: 22, display: "flex", flexDirection: "column", gap: 14, maxWidth: 680 };
 const BTN: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer" };
 
-export type SearchClientRow = { id: string; name: string; email: string; active: boolean };
+export type SearchClientRow = { id: string; name: string; email: string; active: boolean; ai_enabled: boolean };
 
-export function SearchClientPanel({ clients }: { clients: SearchClientRow[] }) {
+export function SearchClientPanel({ clients, officeAiEnabled }: { clients: SearchClientRow[]; officeAiEnabled: boolean }) {
   const [state, action, pending] = useActionState<SearchClientState, FormData>(addSearchClient, {});
 
   return (
@@ -22,6 +22,26 @@ export function SearchClientPanel({ clients }: { clients: SearchClientRow[] }) {
         <div style={{ fontSize: 11.5, color: "#8a8d98", marginTop: 3 }}>
           Crie um acesso simples — só consulta de tributação por NCM — para um cliente seu, sem acesso ao resto do sistema.
         </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, border: "1px solid #ececea", background: "#fafaf8" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600 }}>Assistente IA no portal</div>
+          <div style={{ fontSize: 11, color: "#8a8d98" }}>Chave-geral: quando desligada, nenhum cliente vê o assistente, mesmo com acesso individual ligado.</div>
+        </div>
+        <form action={toggleOfficeAi}>
+          <input type="hidden" name="aiEnabled" value={String(officeAiEnabled)} />
+          <button
+            type="submit"
+            className="hv-light"
+            style={{
+              fontSize: 11.5, fontWeight: 700, borderRadius: 7, padding: "5px 10px", cursor: "pointer", border: "1.5px solid",
+              color: officeAiEnabled ? "#0e7a6f" : "#4b4e58", background: officeAiEnabled ? "#e8f5f0" : "#fff", borderColor: officeAiEnabled ? "#c9ebdf" : "#e2e2de",
+            }}
+          >
+            {officeAiEnabled ? "Ligada" : "Desligada"}
+          </button>
+        </form>
       </div>
       <form action={action} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
         <div style={{ flex: "1 1 180px" }}>
@@ -65,6 +85,21 @@ export function SearchClientPanel({ clients }: { clients: SearchClientRow[] }) {
                 style={{ fontSize: 11.5, fontWeight: 600, color: "#4b4e58", background: "#fff", border: "1.5px solid #e2e2de", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}
               >
                 {c.active ? "Desativar" : "Ativar"}
+              </button>
+            </form>
+            <form action={toggleSearchClientAi}>
+              <input type="hidden" name="id" value={c.id} />
+              <input type="hidden" name="aiEnabled" value={String(c.ai_enabled)} />
+              <button
+                type="submit"
+                title="Assistente IA para este cliente"
+                className="hv-light"
+                style={{
+                  fontSize: 11.5, fontWeight: 600, borderRadius: 7, padding: "5px 10px", cursor: "pointer", border: "1.5px solid",
+                  color: c.ai_enabled ? "#0e7a6f" : "#4b4e58", background: c.ai_enabled ? "#e8f5f0" : "#fff", borderColor: c.ai_enabled ? "#c9ebdf" : "#e2e2de",
+                }}
+              >
+                IA: {c.ai_enabled ? "ligada" : "desligada"}
               </button>
             </form>
             <ConfirmForm action={removeSearchClient} message={`Remover o acesso de ${c.name}?`}>

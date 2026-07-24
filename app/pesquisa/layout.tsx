@@ -19,7 +19,7 @@ export default async function PesquisaLayout({ children }: { children: React.Rea
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      <PortalSidebar officeName={office.name} clientName={client.name} />
+      <PortalSidebar officeName={office.name} clientName={client.name} aiEnabled={office.ai_search_enabled && client.ai_enabled} />
       <main style={{ flex: 1, overflow: "auto", background: "#fafaf8" }}>{children}</main>
     </div>
   );

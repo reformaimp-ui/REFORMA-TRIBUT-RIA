@@ -9,6 +9,7 @@ import { CclassTable } from "@/components/app/CclassTable";
 import { ProdutoTable, type ProdRow } from "@/components/app/ProdutoTable";
 import { ServicoTable, type ServicoRow } from "@/components/app/ServicoTable";
 import { NcmExplorer } from "@/components/app/NcmExplorer";
+import { TaxAiChat } from "@/components/ai/TaxAiChat";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   const tab =
     sp.tab === "produtos" ? "produtos" :
     sp.tab === "servicos" ? "servicos" :
-    sp.tab === "arvore-ncm" ? "arvore-ncm" : "dados";
+    sp.tab === "arvore-ncm" ? "arvore-ncm" :
+    sp.tab === "assistente" ? "assistente" : "dados";
   const q = (sp.q ?? "").trim();
   const page = Math.max(1, Number(sp.page) || 1);
   const supabase = await createClient();
@@ -107,7 +109,8 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
         <Link href="/ibs?tab=produtos" style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
         <Link href="/ibs?tab=servicos" style={tabStyle(tab === "servicos")}>Tributação dos serviços</Link>
         <Link href="/ibs?tab=arvore-ncm" style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
-        {canCreate ? (
+        <Link href="/ibs?tab=assistente" style={tabStyle(tab === "assistente")}>Assistente IA</Link>
+        {canCreate && tab !== "assistente" ? (
           <Link
             href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "servicos" ? "servico" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
             className="hv-btn"
@@ -143,11 +146,17 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Classificação por NBS (Nomenclatura Brasileira de Serviços) — CST e % de redução seguem o mesmo cClassTrib cadastrado em Tributação dos produtos</div>
           <ServicoTable rows={serv} cstRedByCclass={cstRedByCclass} total={servTotal} page={page} pageSize={PAGE_SIZE} q={q} canDelete={canDelete} />
         </section>
-      ) : (
+      ) : tab === "arvore-ncm" ? (
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Árvore de NCM</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Pesquise um código ou descrição para ver a hierarquia completa (capítulo → posição → subposição → item)</div>
           <NcmExplorer />
+        </section>
+      ) : (
+        <section style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Assistente IA</div>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Descreva um produto ou serviço para descobrir o NCM/NBS provável e a tributação de IBS e CBS</div>
+          <TaxAiChat />
         </section>
       )}
     </div>
