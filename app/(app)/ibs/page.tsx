@@ -9,7 +9,9 @@ import { CclassTable } from "@/components/app/CclassTable";
 import { ProdutoTable, type ProdRow } from "@/components/app/ProdutoTable";
 import { ServicoTable, type ServicoRow } from "@/components/app/ServicoTable";
 import { NcmExplorer } from "@/components/app/NcmExplorer";
+import { GroupsPanel } from "@/components/app/GroupsPanel";
 import { TaxAiChat } from "@/components/ai/TaxAiChat";
+import { listGroups } from "./grupos-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,8 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
     sp.tab === "produtos" ? "produtos" :
     sp.tab === "servicos" ? "servicos" :
     sp.tab === "arvore-ncm" ? "arvore-ncm" :
+    sp.tab === "grupos-produtos" ? "grupos-produtos" :
+    sp.tab === "grupos-servicos" ? "grupos-servicos" :
     sp.tab === "assistente" ? "assistente" : "dados";
   const q = (sp.q ?? "").trim();
   const page = Math.max(1, Number(sp.page) || 1);
@@ -91,6 +95,11 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
     }
   }
 
+  let produtoGroups: Awaited<ReturnType<typeof listGroups>> = [];
+  if (tab === "grupos-produtos") produtoGroups = await listGroups("produto");
+  let servicoGroups: Awaited<ReturnType<typeof listGroups>> = [];
+  if (tab === "grupos-servicos") servicoGroups = await listGroups("servico");
+
   const [{ data: cst }, { data: cclass }, { data: links }] = await Promise.all([
     supabase.from("cst_rows").select("code,descr").order("position"),
     supabase.from("cclass_rows").select("code,descr").order("position"),
@@ -109,8 +118,10 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
         <Link href="/ibs?tab=produtos" className={tab === "produtos" ? undefined : "hv-light"} style={tabStyle(tab === "produtos")}>Tributação dos produtos</Link>
         <Link href="/ibs?tab=servicos" className={tab === "servicos" ? undefined : "hv-light"} style={tabStyle(tab === "servicos")}>Tributação dos serviços</Link>
         <Link href="/ibs?tab=arvore-ncm" className={tab === "arvore-ncm" ? undefined : "hv-light"} style={tabStyle(tab === "arvore-ncm")}>Árvore de NCM</Link>
+        <Link href="/ibs?tab=grupos-produtos" className={tab === "grupos-produtos" ? undefined : "hv-light"} style={tabStyle(tab === "grupos-produtos")}>Grupos de produtos</Link>
+        <Link href="/ibs?tab=grupos-servicos" className={tab === "grupos-servicos" ? undefined : "hv-light"} style={tabStyle(tab === "grupos-servicos")}>Grupos de serviços</Link>
         <Link href="/ibs?tab=assistente" className={tab === "assistente" ? undefined : "hv-light"} style={tabStyle(tab === "assistente")}>Assistente IA</Link>
-        {canCreate && tab !== "assistente" ? (
+        {canCreate && tab !== "assistente" && tab !== "grupos-produtos" && tab !== "grupos-servicos" ? (
           <Link
             href={`/ibs/novo?tipo=${tab === "produtos" ? "produto" : tab === "servicos" ? "servico" : tab === "arvore-ncm" ? "ncm" : "cst"}`}
             className="hv-btn"
@@ -151,6 +162,18 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Árvore de NCM</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Pesquise um código ou descrição para ver a hierarquia completa (capítulo → posição → subposição → item)</div>
           <NcmExplorer />
+        </section>
+      ) : tab === "grupos-produtos" ? (
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Grupos de produtos</div>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Organize as tributações de NCM em grupos e subgrupos livres, com observações — uma tributação pode estar em vários grupos</div>
+          <GroupsPanel kind="produto" initialGroups={produtoGroups} canCreate={canCreate} canDelete={canDelete} />
+        </section>
+      ) : tab === "grupos-servicos" ? (
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Grupos de serviços</div>
+          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Organize as tributações de NBS em grupos e subgrupos livres, com observações — uma tributação pode estar em vários grupos</div>
+          <GroupsPanel kind="servico" initialGroups={servicoGroups} canCreate={canCreate} canDelete={canDelete} />
         </section>
       ) : (
         <section style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
