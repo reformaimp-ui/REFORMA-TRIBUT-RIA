@@ -7,8 +7,12 @@ import { canDo } from "@/lib/permissions";
 
 export type GroupKind = "produto" | "servico";
 export type GroupRow = { id: string; parent_id: string | null; name: string; notes: string | null; position: number };
-export type LinkedItem = { linkId: string; itemId: string; notes: string | null; label: string; sub: string };
-export type SearchItem = { itemId: string; label: string; sub: string };
+export type ItemDetails = {
+  itemId: string; code: string; descr: string; cst: string; cclass: string;
+  aliqIbs: string; aliqCbs: string; redIbs: string; redCbs: string;
+};
+export type LinkedItem = ItemDetails & { linkId: string; notes: string | null };
+export type SearchItem = ItemDetails;
 
 const LINK_TABLE: Record<GroupKind, string> = { produto: "tax_group_produtos", servico: "tax_group_servicos" };
 const LINK_ID_COL: Record<GroupKind, string> = { produto: "produto_id", servico: "servico_id" };
@@ -85,8 +89,21 @@ type ProdutoJoinRow = {
 };
 type ServicoJoinRow = { id: string; notes: string | null; servico_id: string; servico_rows: { nbs: string; nbs_descr: string; item: string | null; cclass: string | null } | null };
 
-function produtoSub(p: { cst: string | null; cclass: string | null; aliq_ibs: string | null; aliq_cbs: string | null; red_ibs: string | null; red_cbs: string | null } | null | undefined): string {
-  return `CST ${p?.cst || "—"} · cClassTrib ${p?.cclass || "—"} · Alíq. IBS ${p?.aliq_ibs || "—"} · Alíq. CBS ${p?.aliq_cbs || "—"} · Red. IBS ${p?.red_ibs || "—"} · Red. CBS ${p?.red_cbs || "—"}`;
+function produtoDetails(
+  itemId: string,
+  p: { ncm: string; descr: string; cst: string | null; cclass: string | null; aliq_ibs: string | null; aliq_cbs: string | null; red_ibs: string | null; red_cbs: string | null } | null | undefined,
+): ItemDetails {
+  return {
+    itemId,
+    code: p?.ncm ?? "",
+    descr: p?.descr ?? "",
+    cst: p?.cst || "",
+    cclass: p?.cclass || "",
+    aliqIbs: p?.aliq_ibs || "",
+    aliqCbs: p?.aliq_cbs || "",
+    redIbs: p?.red_ibs || "",
+    redCbs: p?.red_cbs || "",
+  };
 }
 
 /** CST e % de redução do serviço seguem o mesmo cClassTrib cadastrado em Tributação dos produtos. */
@@ -101,8 +118,22 @@ async function redByCclass(cclassCodes: string[]): Promise<Record<string, { cst:
   return map;
 }
 
-function servicoSub(cclass: string | null | undefined, ref: { cst: string; red_ibs: string; red_cbs: string } | undefined): string {
-  return `cClassTrib ${cclass || "—"} · CST ${ref?.cst || "—"} · Red. IBS ${ref?.red_ibs || "—"} · Red. CBS ${ref?.red_cbs || "—"}`;
+function servicoDetails(
+  itemId: string,
+  s: { nbs: string; nbs_descr: string; cclass: string | null } | null | undefined,
+  ref: { cst: string; red_ibs: string; red_cbs: string } | undefined,
+): ItemDetails {
+  return {
+    itemId,
+    code: s?.nbs ?? "",
+    descr: s?.nbs_descr ?? "",
+    cst: ref?.cst || "",
+    cclass: s?.cclass || "",
+    aliqIbs: "",
+    aliqCbs: "",
+    redIbs: ref?.red_ibs || "",
+    redCbs: ref?.red_cbs || "",
+  };
 }
 
 export async function listGroupItems(kind: GroupKind, groupId: string): Promise<LinkedItem[]> {
@@ -115,10 +146,8 @@ export async function listGroupItems(kind: GroupKind, groupId: string): Promise<
       .order("position");
     return ((data ?? []) as unknown as ProdutoJoinRow[]).map((r) => ({
       linkId: r.id,
-      itemId: r.produto_id,
       notes: r.notes,
-      label: `${r.produto_rows?.ncm ?? ""} — ${r.produto_rows?.descr ?? ""}`,
-      sub: produtoSub(r.produto_rows),
+      ...produtoDetails(r.produto_id, r.produto_rows),
     }));
   }
   const { data } = await supabase
@@ -130,10 +159,8 @@ export async function listGroupItems(kind: GroupKind, groupId: string): Promise<
   const refByCclass = await redByCclass(Array.from(new Set(rows.map((r) => r.servico_rows?.cclass).filter((c): c is string => !!c))));
   return rows.map((r) => ({
     linkId: r.id,
-    itemId: r.servico_id,
     notes: r.notes,
-    label: `NBS ${r.servico_rows?.nbs ?? ""} — ${r.servico_rows?.nbs_descr ?? ""}`,
-    sub: servicoSub(r.servico_rows?.cclass, r.servico_rows?.cclass ? refByCclass[r.servico_rows.cclass] : undefined),
+    ...servicoDetails(r.servico_id, r.servico_rows, r.servico_rows?.cclass ? refByCclass[r.servico_rows.cclass] : undefined),
   }));
 }
 
@@ -149,7 +176,7 @@ export async function searchItemsToLink(kind: GroupKind, term: string): Promise<
       .or(`ncm.ilike.${like},descr.ilike.${like},cst.ilike.${like},cclass.ilike.${like}`)
       .order("position")
       .limit(30);
-    return (data ?? []).map((r) => ({ itemId: r.id, label: `${r.ncm} — ${r.descr}`, sub: produtoSub(r) }));
+    return (data ?? []).map((r) => produtoDetails(r.id, r));
   }
   const { data } = await supabase
     .from("servico_rows")
@@ -159,7 +186,7 @@ export async function searchItemsToLink(kind: GroupKind, term: string): Promise<
     .limit(30);
   const rows = data ?? [];
   const refByCclass = await redByCclass(Array.from(new Set(rows.map((r) => r.cclass).filter((c): c is string => !!c))));
-  return rows.map((r) => ({ itemId: r.id, label: `NBS ${r.nbs} — ${r.nbs_descr}`, sub: servicoSub(r.cclass, r.cclass ? refByCclass[r.cclass] : undefined) }));
+  return rows.map((r) => servicoDetails(r.id, r, r.cclass ? refByCclass[r.cclass] : undefined));
 }
 
 export async function linkItem(kind: GroupKind, groupId: string, itemId: string): Promise<{ error?: string }> {

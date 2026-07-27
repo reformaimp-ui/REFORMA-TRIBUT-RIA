@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
-import type { ExportNode, GroupExportData } from "@/app/(app)/ibs/grupos-actions";
+import type { ExportNode, GroupExportData, LinkedItem } from "@/app/(app)/ibs/grupos-actions";
 
 const MARGIN = 40;
 const ACCENT_RGB: [number, number, number] = [70, 83, 214];
@@ -15,6 +15,13 @@ function formatDate(iso: string): string {
     " " +
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
   );
+}
+
+function itemDetails(it: LinkedItem): string {
+  const parts = [`CST ${it.cst || "—"}`, `cClassTrib ${it.cclass || "—"}`];
+  if (it.aliqIbs || it.aliqCbs) parts.push(`Alíq. IBS ${it.aliqIbs || "—"}`, `Alíq. CBS ${it.aliqCbs || "—"}`);
+  parts.push(`Red. IBS ${it.redIbs || "—"}`, `Red. CBS ${it.redCbs || "—"}`);
+  return parts.join(" · ");
 }
 
 function slugify(name: string): string {
@@ -145,7 +152,7 @@ export async function exportGroupPdf(data: GroupExportData) {
       autoTable(doc, {
         startY: y,
         head: [["Tributação", "Detalhes", "Observação"]],
-        body: node.items.map((it) => [it.label, it.sub, it.notes || ""]),
+        body: node.items.map((it) => [`${it.code} — ${it.descr}`, itemDetails(it), it.notes || ""]),
         margin: { left: MARGIN, right: MARGIN },
         styles: { fontSize: 9, cellPadding: 5, valign: "top" },
         headStyles: { fillColor: ACCENT_RGB },

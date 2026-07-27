@@ -7,11 +7,23 @@ import { Spinner } from "@/components/app/Spinner";
 import {
   createGroup, renameGroup, updateGroupNotes, deleteGroup,
   listGroupItems, searchItemsToLink, linkItem, unlinkItem, updateLinkNotes, getGroupExportData,
-  type GroupKind, type GroupRow, type LinkedItem, type SearchItem,
+  type GroupKind, type GroupRow, type LinkedItem, type SearchItem, type ItemDetails,
 } from "@/app/(app)/ibs/grupos-actions";
+import { getNcmChainsForCodes, type NcmNode } from "@/app/(app)/ibs/actions";
 import { exportGroupPdf } from "@/lib/groupPdf";
 
 const ROOT = "__root__";
+
+/** Exibição — não altera o dado salvo. Formata só quando há os 8 dígitos padrão. */
+function formatNcm(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  return d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : raw;
+}
+
+function itemLabel(kind: GroupKind, it: { code: string; descr: string }): string {
+  const code = kind === "produto" ? formatNcm(it.code) : it.code;
+  return `${kind === "servico" ? "NBS " : ""}${code} — ${it.descr}`;
+}
 
 export function GroupsPanel({
   kind, initialGroups, canCreate, canDelete,
@@ -338,6 +350,7 @@ function GroupDetail({
   const [results, setResults] = useState<SearchItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [ncmChains, setNcmChains] = useState<Record<string, NcmNode[]>>({});
 
   useEffect(() => {
     listGroupItems(kind, group.id).then((r) => {
@@ -345,6 +358,21 @@ function GroupDetail({
       setLinkedIds(new Set(r.map((x) => x.itemId)));
     });
   }, [kind, group.id]);
+
+  // Árvore de NCM (capítulo → posição → subposição → item) de cada tributação vinculada.
+  useEffect(() => {
+    if (kind !== "produto" || !items || !items.length) {
+      setNcmChains({});
+      return;
+    }
+    let alive = true;
+    getNcmChainsForCodes(items.map((it) => it.code)).then((m) => {
+      if (alive) setNcmChains(m);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [kind, items]);
 
   useEffect(() => {
     const term = q.trim();
@@ -457,8 +485,8 @@ function GroupDetail({
                 results.map((r) => (
                   <div key={r.itemId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderBottom: "1px solid #f0f0ed" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</div>
-                      <div style={{ fontSize: 11, color: "#8a8d98" }}>{r.sub}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{itemLabel(kind, r)}</div>
+                      <div style={{ fontSize: 11, color: "#8a8d98" }}>{detailsLine(r)}</div>
                     </div>
                     {linkedIds.has(r.itemId) ? (
                       <div style={{ fontSize: 11, color: "#0e7a6f", fontWeight: 600 }}>Já vinculado</div>
@@ -491,9 +519,16 @@ function GroupDetail({
         ) : items.length === 0 ? (
           <div style={{ fontSize: 12, color: "#a0a3ad", fontStyle: "italic", padding: 10 }}>Nenhuma tributação vinculada a este grupo ainda.</div>
         ) : (
-          <div style={{ border: "1px solid #e7e7e3", borderRadius: 8, overflow: "hidden" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {items.map((it) => (
-              <LinkedItemRow key={it.linkId} item={it} canDelete={canDelete} kind={kind} onUnlink={() => handleUnlink(it.linkId)} />
+              <LinkedItemRow
+                key={it.linkId}
+                item={it}
+                canDelete={canDelete}
+                kind={kind}
+                chain={kind === "produto" ? ncmChains[it.code] : undefined}
+                onUnlink={() => handleUnlink(it.linkId)}
+              />
             ))}
           </div>
         )}
@@ -502,32 +537,73 @@ function GroupDetail({
   );
 }
 
+/** Compacto, usado na lista de resultados de busca (antes de vincular). */
+function detailsLine(it: ItemDetails): string {
+  const parts = [`CST ${it.cst || "—"}`, `cClassTrib ${it.cclass || "—"}`];
+  if (it.aliqIbs || it.aliqCbs) parts.push(`Alíq. IBS ${it.aliqIbs || "—"}`, `Alíq. CBS ${it.aliqCbs || "—"}`);
+  parts.push(`Red. IBS ${it.redIbs || "—"}`, `Red. CBS ${it.redCbs || "—"}`);
+  return parts.join(" · ");
+}
+
+function Chip({ label, value, color }: { label: string; value: string; color?: string }) {
+  if (!value) return null;
+  return (
+    <div style={{ fontSize: 10.5, background: "#f5f5f3", borderRadius: 6, padding: "3px 8px", display: "flex", gap: 4, alignItems: "baseline" }}>
+      <span style={{ color: "#8a8d98", fontWeight: 600 }}>{label}</span>
+      <span style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 700, color: color || "#33363f" }}>{value}</span>
+    </div>
+  );
+}
+
 function LinkedItemRow({
-  item, canDelete, kind, onUnlink,
+  item, canDelete, kind, chain, onUnlink,
 }: {
-  item: LinkedItem; canDelete: boolean; kind: GroupKind; onUnlink: () => void;
+  item: LinkedItem; canDelete: boolean; kind: GroupKind; chain?: NcmNode[]; onUnlink: () => void;
 }) {
   const [notes, setNotes] = useState(item.notes ?? "");
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderBottom: "1px solid #f0f0ed" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "#33363f" }}>{item.label}</div>
-        <div style={{ fontSize: 11, color: "#8a8d98", marginBottom: 6 }}>{item.sub}</div>
-        <input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => { if (notes !== (item.notes ?? "")) updateLinkNotes(kind, item.linkId, notes); }}
-          placeholder="Observação sobre esta tributação neste grupo…"
-          style={{ width: "100%", fontSize: 11.5, padding: "5px 8px", borderRadius: 6, border: "1px solid #e2e2de", outline: "none" }}
-        />
+    <div style={{ background: "#fafaf8", border: "1px solid #e7e7e3", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#33363f", flex: 1, minWidth: 0 }}>{itemLabel(kind, item)}</div>
+        {canDelete ? (
+          <button type="button" title="Remover do grupo" onClick={onUnlink} className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 2, background: "none", border: "none" }}>
+            <svg width="14" height="14" viewBox="0 0 15 15">
+              <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : null}
       </div>
-      {canDelete ? (
-        <button type="button" title="Remover do grupo" onClick={onUnlink} className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 4, background: "none", border: "none", marginTop: 2 }}>
-          <svg width="14" height="14" viewBox="0 0 15 15">
-            <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <Chip label="CST" value={item.cst} color={ACCENT} />
+        <Chip label="cClassTrib" value={item.cclass} color="#7c3aed" />
+        <Chip label="Alíq. IBS" value={item.aliqIbs} />
+        <Chip label="Alíq. CBS" value={item.aliqCbs} />
+        <Chip label="Red. IBS" value={item.redIbs} color="#0e7a6f" />
+        <Chip label="Red. CBS" value={item.redCbs} color="#0e7a6f" />
+      </div>
+
+      {chain?.length ? (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
+          {chain.map((node, j) => (
+            <span key={node.digits} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              {j > 0 ? <span style={{ color: "#c7c9d1", fontSize: 11 }}>›</span> : null}
+              <span style={{ fontFamily: "var(--font-jetbrains)", fontSize: 11, fontWeight: 700, color: j === chain.length - 1 ? ACCENT : "#8a8d98" }}>
+                {node.code}
+              </span>
+              <span style={{ fontSize: 11, color: "#6b6e78" }}>{node.descr}</span>
+            </span>
+          ))}
+        </div>
       ) : null}
+
+      <input
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        onBlur={() => { if (notes !== (item.notes ?? "")) updateLinkNotes(kind, item.linkId, notes); }}
+        placeholder="Observação sobre esta tributação neste grupo…"
+        style={{ width: "100%", fontSize: 11.5, padding: "6px 9px", borderRadius: 6, border: "1px solid #e2e2de", outline: "none", background: "#fff" }}
+      />
     </div>
   );
 }
