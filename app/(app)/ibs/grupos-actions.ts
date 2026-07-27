@@ -79,15 +79,38 @@ export async function deleteGroup(id: string): Promise<{ error?: string }> {
   return {};
 }
 
-type ProdutoJoinRow = { id: string; notes: string | null; produto_id: string; produto_rows: { ncm: string; descr: string; cst: string | null; cclass: string | null } | null };
+type ProdutoJoinRow = {
+  id: string; notes: string | null; produto_id: string;
+  produto_rows: { ncm: string; descr: string; cst: string | null; cclass: string | null; aliq_ibs: string | null; aliq_cbs: string | null; red_ibs: string | null; red_cbs: string | null } | null;
+};
 type ServicoJoinRow = { id: string; notes: string | null; servico_id: string; servico_rows: { nbs: string; nbs_descr: string; item: string | null; cclass: string | null } | null };
+
+function produtoSub(p: { cst: string | null; cclass: string | null; aliq_ibs: string | null; aliq_cbs: string | null; red_ibs: string | null; red_cbs: string | null } | null | undefined): string {
+  return `CST ${p?.cst || "—"} · cClassTrib ${p?.cclass || "—"} · Alíq. IBS ${p?.aliq_ibs || "—"} · Alíq. CBS ${p?.aliq_cbs || "—"} · Red. IBS ${p?.red_ibs || "—"} · Red. CBS ${p?.red_cbs || "—"}`;
+}
+
+/** CST e % de redução do serviço seguem o mesmo cClassTrib cadastrado em Tributação dos produtos. */
+async function redByCclass(cclassCodes: string[]): Promise<Record<string, { cst: string; red_ibs: string; red_cbs: string }>> {
+  if (!cclassCodes.length) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.from("produto_rows").select("cclass,cst,red_ibs,red_cbs").in("cclass", cclassCodes);
+  const map: Record<string, { cst: string; red_ibs: string; red_cbs: string }> = {};
+  for (const r of (data ?? []) as { cclass: string; cst: string; red_ibs: string; red_cbs: string }[]) {
+    if (!map[r.cclass]) map[r.cclass] = { cst: r.cst, red_ibs: r.red_ibs, red_cbs: r.red_cbs };
+  }
+  return map;
+}
+
+function servicoSub(cclass: string | null | undefined, ref: { cst: string; red_ibs: string; red_cbs: string } | undefined): string {
+  return `cClassTrib ${cclass || "—"} · CST ${ref?.cst || "—"} · Red. IBS ${ref?.red_ibs || "—"} · Red. CBS ${ref?.red_cbs || "—"}`;
+}
 
 export async function listGroupItems(kind: GroupKind, groupId: string): Promise<LinkedItem[]> {
   const supabase = await createClient();
   if (kind === "produto") {
     const { data } = await supabase
       .from("tax_group_produtos")
-      .select("id,notes,produto_id,produto_rows(ncm,descr,cst,cclass)")
+      .select("id,notes,produto_id,produto_rows(ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs)")
       .eq("group_id", groupId)
       .order("position");
     return ((data ?? []) as unknown as ProdutoJoinRow[]).map((r) => ({
@@ -95,7 +118,7 @@ export async function listGroupItems(kind: GroupKind, groupId: string): Promise<
       itemId: r.produto_id,
       notes: r.notes,
       label: `${r.produto_rows?.ncm ?? ""} — ${r.produto_rows?.descr ?? ""}`,
-      sub: `CST ${r.produto_rows?.cst || "—"} · cClassTrib ${r.produto_rows?.cclass || "—"}`,
+      sub: produtoSub(r.produto_rows),
     }));
   }
   const { data } = await supabase
@@ -103,12 +126,14 @@ export async function listGroupItems(kind: GroupKind, groupId: string): Promise<
     .select("id,notes,servico_id,servico_rows(nbs,nbs_descr,item,cclass)")
     .eq("group_id", groupId)
     .order("position");
-  return ((data ?? []) as unknown as ServicoJoinRow[]).map((r) => ({
+  const rows = (data ?? []) as unknown as ServicoJoinRow[];
+  const refByCclass = await redByCclass(Array.from(new Set(rows.map((r) => r.servico_rows?.cclass).filter((c): c is string => !!c))));
+  return rows.map((r) => ({
     linkId: r.id,
     itemId: r.servico_id,
     notes: r.notes,
     label: `NBS ${r.servico_rows?.nbs ?? ""} — ${r.servico_rows?.nbs_descr ?? ""}`,
-    sub: r.servico_rows?.item || `cClassTrib ${r.servico_rows?.cclass || "—"}`,
+    sub: servicoSub(r.servico_rows?.cclass, r.servico_rows?.cclass ? refByCclass[r.servico_rows.cclass] : undefined),
   }));
 }
 
@@ -120,11 +145,11 @@ export async function searchItemsToLink(kind: GroupKind, term: string): Promise<
   if (kind === "produto") {
     const { data } = await supabase
       .from("produto_rows")
-      .select("id,ncm,descr,cst,cclass")
+      .select("id,ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs")
       .or(`ncm.ilike.${like},descr.ilike.${like},cst.ilike.${like},cclass.ilike.${like}`)
       .order("position")
       .limit(30);
-    return (data ?? []).map((r) => ({ itemId: r.id, label: `${r.ncm} — ${r.descr}`, sub: `CST ${r.cst || "—"} · cClassTrib ${r.cclass || "—"}` }));
+    return (data ?? []).map((r) => ({ itemId: r.id, label: `${r.ncm} — ${r.descr}`, sub: produtoSub(r) }));
   }
   const { data } = await supabase
     .from("servico_rows")
@@ -132,7 +157,9 @@ export async function searchItemsToLink(kind: GroupKind, term: string): Promise<
     .or(`nbs.ilike.${like},nbs_descr.ilike.${like},item.ilike.${like},cclass.ilike.${like}`)
     .order("position")
     .limit(30);
-  return (data ?? []).map((r) => ({ itemId: r.id, label: `NBS ${r.nbs} — ${r.nbs_descr}`, sub: r.item || `cClassTrib ${r.cclass || "—"}` }));
+  const rows = data ?? [];
+  const refByCclass = await redByCclass(Array.from(new Set(rows.map((r) => r.cclass).filter((c): c is string => !!c))));
+  return rows.map((r) => ({ itemId: r.id, label: `NBS ${r.nbs} — ${r.nbs_descr}`, sub: servicoSub(r.cclass, r.cclass ? refByCclass[r.cclass] : undefined) }));
 }
 
 export async function linkItem(kind: GroupKind, groupId: string, itemId: string): Promise<{ error?: string }> {
