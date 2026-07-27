@@ -166,3 +166,37 @@ export async function updateLinkNotes(kind: GroupKind, linkId: string, notes: st
   if (error) return { error: error.message };
   return {};
 }
+
+export type ExportNode = { id: string; name: string; notes: string | null; items: LinkedItem[]; children: ExportNode[] };
+export type GroupExportData = { officeName: string; generatedAt: string; root: ExportNode };
+
+/**
+ * Monta a árvore completa (grupo + todos os subgrupos) com as tributações
+ * vinculadas em cada nível — usado para exportar o ramo inteiro em PDF, não
+ * só o nó selecionado.
+ */
+export async function getGroupExportData(kind: GroupKind, groupId: string): Promise<GroupExportData> {
+  const { office } = await getContext();
+  const supabase = await createClient();
+  const { data } = await supabase.from("tax_groups").select("id,parent_id,name,notes,position").eq("kind", kind).order("position");
+  const groups = (data ?? []) as GroupRow[];
+  const childrenOf = new Map<string, GroupRow[]>();
+  for (const g of groups) {
+    if (!g.parent_id) continue;
+    if (!childrenOf.has(g.parent_id)) childrenOf.set(g.parent_id, []);
+    childrenOf.get(g.parent_id)!.push(g);
+  }
+  const rootGroup = groups.find((g) => g.id === groupId);
+  if (!rootGroup) throw new Error("Grupo não encontrado.");
+
+  async function buildNode(g: GroupRow): Promise<ExportNode> {
+    const [items, children] = await Promise.all([
+      listGroupItems(kind, g.id),
+      Promise.all((childrenOf.get(g.id) ?? []).map(buildNode)),
+    ]);
+    return { id: g.id, name: g.name, notes: g.notes, items, children };
+  }
+
+  const root = await buildNode(rootGroup);
+  return { officeName: office.name, generatedAt: new Date().toISOString(), root };
+}

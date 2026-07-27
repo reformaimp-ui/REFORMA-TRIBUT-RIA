@@ -6,9 +6,10 @@ import { TableSearch } from "@/components/app/TableSearch";
 import { Spinner } from "@/components/app/Spinner";
 import {
   createGroup, renameGroup, updateGroupNotes, deleteGroup,
-  listGroupItems, searchItemsToLink, linkItem, unlinkItem, updateLinkNotes,
+  listGroupItems, searchItemsToLink, linkItem, unlinkItem, updateLinkNotes, getGroupExportData,
   type GroupKind, type GroupRow, type LinkedItem, type SearchItem,
 } from "@/app/(app)/ibs/grupos-actions";
+import { exportGroupPdf } from "@/lib/groupPdf";
 
 const ROOT = "__root__";
 
@@ -336,6 +337,7 @@ function GroupDetail({
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchItem[]>([]);
   const [searching, setSearching] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     listGroupItems(kind, group.id).then((r) => {
@@ -389,9 +391,41 @@ function GroupDetail({
     }
   }
 
+  async function handleExportPdf() {
+    setExporting(true);
+    try {
+      const data = await getGroupExportData(kind, group.id);
+      await exportGroupPdf(data);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <div style={{ fontSize: 15, fontWeight: 700 }}>{group.name}</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{group.name}</div>
+        <button
+          type="button"
+          onClick={handleExportPdf}
+          disabled={exporting}
+          className="hv-light"
+          style={{
+            display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#4b4e58",
+            background: "#fff", border: "1px solid #e2e2de", borderRadius: 8, padding: "7px 12px",
+            cursor: exporting ? "default" : "pointer", opacity: exporting ? 0.7 : 1,
+          }}
+        >
+          {exporting ? (
+            <Spinner size={12} />
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 15 15">
+              <path d="M7.5 1.5v8m0 0L4.5 6.5m3 3l3-3M2 11.5v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+          {exporting ? "Gerando…" : "Exportar PDF"}
+        </button>
+      </div>
 
       <div>
         <div style={{ fontSize: 11, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>Observações</div>
