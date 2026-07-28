@@ -11,7 +11,8 @@ import { ServicoTable, type ServicoRow } from "@/components/app/ServicoTable";
 import { NcmExplorer } from "@/components/app/NcmExplorer";
 import { GroupsPanel } from "@/components/app/GroupsPanel";
 import { TaxAiChat } from "@/components/ai/TaxAiChat";
-import { listGroups } from "./grupos-actions";
+import { listGroups, listCategories } from "./grupos-actions";
+import { codeSearchPatterns } from "@/lib/codeSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,7 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
       .order("position")
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (q) {
-      const like = `%${q}%`;
-      query = query.or(`ncm.ilike.${like},descr.ilike.${like},cst.ilike.${like},cclass.ilike.${like}`);
+      query = query.or(codeSearchPatterns(q, "ncm", "ncm_digits", ["descr", "cst", "cclass"]));
     }
     const { data, count } = await query;
     prod = (data ?? []) as ProdRow[];
@@ -71,8 +71,7 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
       .order("position")
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (q) {
-      const like = `%${q}%`;
-      query = query.or(`item.ilike.${like},nbs.ilike.${like},nbs_descr.ilike.${like},indop.ilike.${like},cclass.ilike.${like}`);
+      query = query.or(codeSearchPatterns(q, "nbs", "nbs_digits", ["item", "nbs_descr", "indop", "cclass"]));
     }
     const { data, count } = await query;
     serv = (data ?? []) as ServicoRow[];
@@ -96,9 +95,11 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   }
 
   let produtoGroups: Awaited<ReturnType<typeof listGroups>> = [];
-  if (tab === "grupos-produtos") produtoGroups = await listGroups("produto");
+  let produtoCategories: Awaited<ReturnType<typeof listCategories>> = [];
+  if (tab === "grupos-produtos") [produtoGroups, produtoCategories] = await Promise.all([listGroups("produto"), listCategories("produto")]);
   let servicoGroups: Awaited<ReturnType<typeof listGroups>> = [];
-  if (tab === "grupos-servicos") servicoGroups = await listGroups("servico");
+  let servicoCategories: Awaited<ReturnType<typeof listCategories>> = [];
+  if (tab === "grupos-servicos") [servicoGroups, servicoCategories] = await Promise.all([listGroups("servico"), listCategories("servico")]);
 
   const [{ data: cst }, { data: cclass }, { data: links }] = await Promise.all([
     supabase.from("cst_rows").select("code,descr").order("position"),
@@ -167,13 +168,19 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Grupos de produtos</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Organize as tributações de NCM em grupos e subgrupos livres, com observações — uma tributação pode estar em vários grupos</div>
-          <GroupsPanel kind="produto" initialGroups={produtoGroups} canCreate={canCreate} canDelete={canDelete} />
+          <GroupsPanel
+            kind="produto" initialGroups={produtoGroups} initialCategories={produtoCategories}
+            canCreate={canCreate} canDelete={canDelete} cclassDescr={cclassDescr} linksByCst={linksByCst}
+          />
         </section>
       ) : tab === "grupos-servicos" ? (
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Grupos de serviços</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Organize as tributações de NBS em grupos e subgrupos livres, com observações — uma tributação pode estar em vários grupos</div>
-          <GroupsPanel kind="servico" initialGroups={servicoGroups} canCreate={canCreate} canDelete={canDelete} />
+          <GroupsPanel
+            kind="servico" initialGroups={servicoGroups} initialCategories={servicoCategories}
+            canCreate={canCreate} canDelete={canDelete} cclassDescr={cclassDescr} linksByCst={linksByCst}
+          />
         </section>
       ) : (
         <section style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>

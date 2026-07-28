@@ -17,6 +17,12 @@ function formatDate(iso: string): string {
   );
 }
 
+/** Exibição — não altera o dado salvo. Formata só quando há os 8 dígitos padrão. */
+function formatNcm(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  return d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : raw;
+}
+
 function itemDetails(it: LinkedItem): string {
   const parts = [`CST ${it.cst || "—"}`, `cClassTrib ${it.cclass || "—"}`];
   if (it.aliqIbs || it.aliqCbs) parts.push(`Alíq. IBS ${it.aliqIbs || "—"}`, `Alíq. CBS ${it.aliqCbs || "—"}`);
@@ -36,22 +42,26 @@ function slugify(name: string): string {
   );
 }
 
-/** Carrega /public/logo.svg e converte para PNG (jsPDF não desenha SVG diretamente). */
+/** Proporção do viewBox de /public/logo-pdf.svg (1746x687) — evita distorcer a marca, que não é quadrada. */
+const LOGO_ASPECT = 1746 / 687;
+
+/** Carrega /public/logo-pdf.svg (logo específica do PDF, não a do app) e converte para PNG — jsPDF não desenha SVG diretamente. */
 async function loadLogoDataUrl(): Promise<string | null> {
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error("Falha ao carregar a logo."));
-      image.src = "/logo.svg";
+      image.src = "/logo-pdf.svg";
     });
-    const size = 128;
+    const height = 400;
+    const width = Math.round(height * LOGO_ASPECT);
     const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, size, size);
+    ctx.drawImage(img, 0, 0, width, height);
     return canvas.toDataURL("image/png");
   } catch {
     return null;
@@ -82,15 +92,12 @@ export async function exportGroupPdf(data: GroupExportData) {
     }
   }
 
-  // Logo do Imperform + wordmark, no canto superior esquerdo.
-  const LOGO_SIZE = 28;
+  // Logo do Imperform, grande e sozinha (já carrega a marca), no canto superior esquerdo.
+  const LOGO_HEIGHT = 60;
+  const LOGO_WIDTH = LOGO_HEIGHT * LOGO_ASPECT;
   let leftY = MARGIN;
-  if (logoDataUrl) doc.addImage(logoDataUrl, "PNG", MARGIN, leftY, LOGO_SIZE, LOGO_SIZE);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Imperform", MARGIN + (logoDataUrl ? LOGO_SIZE + 10 : 0), leftY + LOGO_SIZE / 2 + 6);
-  leftY += LOGO_SIZE + 18;
+  if (logoDataUrl) doc.addImage(logoDataUrl, "PNG", MARGIN, leftY, LOGO_WIDTH, LOGO_HEIGHT);
+  leftY += LOGO_HEIGHT + 14;
 
   // QR do site, no canto superior direito.
   const qrBlockWidth = 64;
@@ -126,6 +133,8 @@ export async function exportGroupPdf(data: GroupExportData) {
 
   y += 24;
 
+  const codeHeader = data.kind === "produto" ? "NCM" : "NBS";
+
   function writeNode(node: ExportNode, depth: number, breadcrumb: string[]) {
     const path = [...breadcrumb, node.name];
 
@@ -151,8 +160,11 @@ export async function exportGroupPdf(data: GroupExportData) {
       ensureSpace(40);
       autoTable(doc, {
         startY: y,
-        head: [["Tributação", "Detalhes", "Observação"]],
-        body: node.items.map((it) => [`${it.code} — ${it.descr}`, itemDetails(it), it.notes || ""]),
+        head: [[codeHeader, "Detalhes", "Observação"]],
+        body: node.items.map((it) => {
+          const code = data.kind === "produto" ? formatNcm(it.code) : it.code;
+          return [`${code} — ${it.descr}`, itemDetails(it), it.notes || ""];
+        }),
         margin: { left: MARGIN, right: MARGIN },
         styles: { fontSize: 9, cellPadding: 5, valign: "top" },
         headStyles: { fillColor: ACCENT_RGB },

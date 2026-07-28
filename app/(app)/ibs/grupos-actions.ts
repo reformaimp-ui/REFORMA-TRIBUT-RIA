@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
 import { canDo } from "@/lib/permissions";
+import { codeSearchPatterns } from "@/lib/codeSearch";
 
 export type GroupKind = "produto" | "servico";
 export type GroupRow = { id: string; parent_id: string | null; name: string; notes: string | null; position: number };
@@ -11,11 +12,14 @@ export type ItemDetails = {
   itemId: string; code: string; descr: string; cst: string; cclass: string;
   aliqIbs: string; aliqCbs: string; redIbs: string; redCbs: string;
 };
-export type LinkedItem = ItemDetails & { linkId: string; notes: string | null };
+export type Category = { id: string; name: string; color: string };
+export type LinkedItem = ItemDetails & { linkId: string; notes: string | null; categories: Category[] };
 export type SearchItem = ItemDetails;
 
 const LINK_TABLE: Record<GroupKind, string> = { produto: "tax_group_produtos", servico: "tax_group_servicos" };
 const LINK_ID_COL: Record<GroupKind, string> = { produto: "produto_id", servico: "servico_id" };
+const CAT_LINK_TABLE: Record<GroupKind, string> = { produto: "tax_group_produto_categories", servico: "tax_group_servico_categories" };
+const CAT_LINK_COL: Record<GroupKind, string> = { produto: "tax_group_produto_id", servico: "tax_group_servico_id" };
 
 async function nextGroupPos(kind: GroupKind, parentId: string | null) {
   const supabase = await createClient();
@@ -136,44 +140,64 @@ function servicoDetails(
   };
 }
 
+/** Categorias marcadas em cada tributação vinculada, indexadas por linkId — 1 query cobrindo todos os itens. */
+async function categoriesByLink(kind: GroupKind, linkIds: string[]): Promise<Record<string, Category[]>> {
+  if (!linkIds.length) return {};
+  const supabase = await createClient();
+  const table = CAT_LINK_TABLE[kind];
+  const linkCol = CAT_LINK_COL[kind];
+  const { data } = await supabase.from(table).select(`${linkCol},tax_categories(id,name,color)`).in(linkCol, linkIds);
+  const map: Record<string, Category[]> = {};
+  for (const r of (data ?? []) as unknown as Record<string, unknown>[]) {
+    const key = r[linkCol] as string;
+    const cat = r.tax_categories as Category | null;
+    if (!map[key]) map[key] = [];
+    if (cat) map[key].push(cat);
+  }
+  return map;
+}
+
 export async function listGroupItems(kind: GroupKind, groupId: string): Promise<LinkedItem[]> {
   const supabase = await createClient();
+  let base: (ItemDetails & { linkId: string; notes: string | null })[];
   if (kind === "produto") {
     const { data } = await supabase
       .from("tax_group_produtos")
       .select("id,notes,produto_id,produto_rows(ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs)")
       .eq("group_id", groupId)
       .order("position");
-    return ((data ?? []) as unknown as ProdutoJoinRow[]).map((r) => ({
+    base = ((data ?? []) as unknown as ProdutoJoinRow[]).map((r) => ({
       linkId: r.id,
       notes: r.notes,
       ...produtoDetails(r.produto_id, r.produto_rows),
     }));
+  } else {
+    const { data } = await supabase
+      .from("tax_group_servicos")
+      .select("id,notes,servico_id,servico_rows(nbs,nbs_descr,item,cclass)")
+      .eq("group_id", groupId)
+      .order("position");
+    const rows = (data ?? []) as unknown as ServicoJoinRow[];
+    const refByCclass = await redByCclass(Array.from(new Set(rows.map((r) => r.servico_rows?.cclass).filter((c): c is string => !!c))));
+    base = rows.map((r) => ({
+      linkId: r.id,
+      notes: r.notes,
+      ...servicoDetails(r.servico_id, r.servico_rows, r.servico_rows?.cclass ? refByCclass[r.servico_rows.cclass] : undefined),
+    }));
   }
-  const { data } = await supabase
-    .from("tax_group_servicos")
-    .select("id,notes,servico_id,servico_rows(nbs,nbs_descr,item,cclass)")
-    .eq("group_id", groupId)
-    .order("position");
-  const rows = (data ?? []) as unknown as ServicoJoinRow[];
-  const refByCclass = await redByCclass(Array.from(new Set(rows.map((r) => r.servico_rows?.cclass).filter((c): c is string => !!c))));
-  return rows.map((r) => ({
-    linkId: r.id,
-    notes: r.notes,
-    ...servicoDetails(r.servico_id, r.servico_rows, r.servico_rows?.cclass ? refByCclass[r.servico_rows.cclass] : undefined),
-  }));
+  const catMap = await categoriesByLink(kind, base.map((b) => b.linkId));
+  return base.map((b) => ({ ...b, categories: catMap[b.linkId] ?? [] }));
 }
 
 export async function searchItemsToLink(kind: GroupKind, term: string): Promise<SearchItem[]> {
   const q = term.trim();
   if (!q) return [];
-  const like = `%${q}%`;
   const supabase = await createClient();
   if (kind === "produto") {
     const { data } = await supabase
       .from("produto_rows")
       .select("id,ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs")
-      .or(`ncm.ilike.${like},descr.ilike.${like},cst.ilike.${like},cclass.ilike.${like}`)
+      .or(codeSearchPatterns(q, "ncm", "ncm_digits", ["descr", "cst", "cclass"]))
       .order("position")
       .limit(30);
     return (data ?? []).map((r) => produtoDetails(r.id, r));
@@ -181,7 +205,7 @@ export async function searchItemsToLink(kind: GroupKind, term: string): Promise<
   const { data } = await supabase
     .from("servico_rows")
     .select("id,nbs,nbs_descr,item,cclass")
-    .or(`nbs.ilike.${like},nbs_descr.ilike.${like},item.ilike.${like},cclass.ilike.${like}`)
+    .or(codeSearchPatterns(q, "nbs", "nbs_digits", ["nbs_descr", "item", "cclass"]))
     .order("position")
     .limit(30);
   const rows = data ?? [];
@@ -221,8 +245,98 @@ export async function updateLinkNotes(kind: GroupKind, linkId: string, notes: st
   return {};
 }
 
+// ─────────────────────────── Categorias ───────────────────────────
+
+export async function listCategories(kind: GroupKind): Promise<Category[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("tax_categories").select("id,name,color").eq("kind", kind).order("position");
+  return (data ?? []) as Category[];
+}
+
+async function nextCategoryPos(kind: GroupKind) {
+  const supabase = await createClient();
+  const { count } = await supabase.from("tax_categories").select("id", { count: "exact", head: true }).eq("kind", kind);
+  return count ?? 0;
+}
+
+export async function createCategory(kind: GroupKind, name: string, color: string): Promise<{ category?: Category; error?: string }> {
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Informe um nome." };
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const position = await nextCategoryPos(kind);
+  const { data, error } = await supabase
+    .from("tax_categories")
+    .insert({ office_id: office.id, kind, name: trimmed, color, position })
+    .select("id,name,color")
+    .single();
+  if (error) return { error: error.message.includes("duplicate") ? "Já existe uma categoria com esse nome." : error.message };
+  return { category: data as Category };
+}
+
+export async function renameCategory(id: string, name: string): Promise<{ error?: string }> {
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Informe um nome." };
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("tax_categories").update({ name: trimmed }).eq("id", id);
+  if (error) return { error: error.message.includes("duplicate") ? "Já existe uma categoria com esse nome." : error.message };
+  return {};
+}
+
+export async function updateCategoryColor(id: string, color: string): Promise<{ error?: string }> {
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("tax_categories").update({ color }).eq("id", id);
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function deleteCategory(id: string): Promise<{ error?: string }> {
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "delete")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("tax_categories").delete().eq("id", id);
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function addCategoryToLink(kind: GroupKind, linkId: string, categoryId: string): Promise<{ error?: string }> {
+  const { office, member } = await getContext();
+  if (!canDo(member, "ibs", "create")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const table = CAT_LINK_TABLE[kind];
+  const linkCol = CAT_LINK_COL[kind];
+  const { error } = await supabase
+    .from(table)
+    .upsert({ office_id: office.id, [linkCol]: linkId, category_id: categoryId }, { onConflict: `${linkCol},category_id`, ignoreDuplicates: true });
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function removeCategoryFromLink(kind: GroupKind, linkId: string, categoryId: string): Promise<{ error?: string }> {
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "delete")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const table = CAT_LINK_TABLE[kind];
+  const linkCol = CAT_LINK_COL[kind];
+  const { error } = await supabase.from(table).delete().eq(linkCol, linkId).eq("category_id", categoryId);
+  if (error) return { error: error.message };
+  return {};
+}
+
 export type ExportNode = { id: string; name: string; notes: string | null; items: LinkedItem[]; children: ExportNode[] };
-export type GroupExportData = { officeName: string; generatedAt: string; root: ExportNode };
+export type GroupExportData = { officeName: string; generatedAt: string; kind: GroupKind; root: ExportNode };
+
+/** Remove da árvore os subgrupos que não têm nenhuma tributação, direta ou em descendentes. */
+function pruneEmpty(node: ExportNode): ExportNode | null {
+  const children = node.children.map(pruneEmpty).filter((c): c is ExportNode => c !== null);
+  if (!node.items.length && !children.length) return null;
+  return { ...node, children };
+}
 
 /**
  * Monta a árvore completa (grupo + todos os subgrupos) com as tributações
@@ -252,5 +366,6 @@ export async function getGroupExportData(kind: GroupKind, groupId: string): Prom
   }
 
   const root = await buildNode(rootGroup);
-  return { officeName: office.name, generatedAt: new Date().toISOString(), root };
+  const prunedChildren = root.children.map(pruneEmpty).filter((c): c is ExportNode => c !== null);
+  return { officeName: office.name, generatedAt: new Date().toISOString(), kind, root: { ...root, children: prunedChildren } };
 }

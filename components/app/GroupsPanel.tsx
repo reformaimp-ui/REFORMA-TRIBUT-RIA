@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ACCENT } from "@/lib/design";
+import { createPortal } from "react-dom";
+import { ACCENT, PALETTE } from "@/lib/design";
 import { TableSearch } from "@/components/app/TableSearch";
 import { Spinner } from "@/components/app/Spinner";
+import { CstLinksInfo } from "@/components/app/CstLinksInfo";
+import { CclassInfo } from "@/components/app/CclassInfo";
 import {
   createGroup, renameGroup, updateGroupNotes, deleteGroup,
   listGroupItems, searchItemsToLink, linkItem, unlinkItem, updateLinkNotes, getGroupExportData,
-  type GroupKind, type GroupRow, type LinkedItem, type SearchItem, type ItemDetails,
+  createCategory, renameCategory, updateCategoryColor, deleteCategory, addCategoryToLink, removeCategoryFromLink,
+  type GroupKind, type GroupRow, type LinkedItem, type SearchItem, type ItemDetails, type Category,
 } from "@/app/(app)/ibs/grupos-actions";
 import { getNcmChainsForCodes, type NcmNode } from "@/app/(app)/ibs/actions";
 import { exportGroupPdf } from "@/lib/groupPdf";
@@ -26,11 +30,14 @@ function itemLabel(kind: GroupKind, it: { code: string; descr: string }): string
 }
 
 export function GroupsPanel({
-  kind, initialGroups, canCreate, canDelete,
+  kind, initialGroups, initialCategories, canCreate, canDelete, cclassDescr, linksByCst,
 }: {
-  kind: GroupKind; initialGroups: GroupRow[]; canCreate: boolean; canDelete: boolean;
+  kind: GroupKind; initialGroups: GroupRow[]; initialCategories: Category[]; canCreate: boolean; canDelete: boolean;
+  cclassDescr: Record<string, string>; linksByCst: Record<string, { code: string; descr: string }[]>;
 }) {
   const [groups, setGroups] = useState(initialGroups);
+  const [categories, setCategories] = useState(initialCategories);
+  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -91,10 +98,52 @@ export function GroupsPanel({
     return res.error;
   }
 
+  async function handleCreateCategory(name: string, color: string) {
+    const res = await createCategory(kind, name, color);
+    if (res.category) setCategories((c) => [...c, res.category!]);
+    return res.error;
+  }
+
+  async function handleRenameCategory(id: string, name: string) {
+    const res = await renameCategory(id, name);
+    if (!res.error) setCategories((c) => c.map((x) => (x.id === id ? { ...x, name: name.trim() } : x)));
+    return res.error;
+  }
+
+  function handleRecolorCategory(id: string, color: string) {
+    setCategories((c) => c.map((x) => (x.id === id ? { ...x, color } : x)));
+    updateCategoryColor(id, color);
+  }
+
+  function handleDeleteCategory(id: string) {
+    setCategories((c) => c.filter((x) => x.id !== id));
+    deleteCategory(id);
+  }
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 20, alignItems: "start" }}>
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: 12 }}>
         <TreeToolbar canCreate={canCreate} onCreate={(name) => handleCreate(null, name)} />
+        <button
+          type="button"
+          onClick={() => setCategoriesModalOpen(true)}
+          className="hv-light"
+          style={{ width: "100%", marginTop: 8, fontSize: 12, fontWeight: 600, color: "#4b4e58", background: "#fff", border: "1px solid #e2e2de", borderRadius: 8, padding: "7px 12px", cursor: "pointer" }}
+        >
+          Categorias{categories.length ? ` (${categories.length})` : ""}
+        </button>
+        {categoriesModalOpen ? (
+          <CategoriesModal
+            kind={kind}
+            categories={categories}
+            canManage={canCreate}
+            onClose={() => setCategoriesModalOpen(false)}
+            onCreate={handleCreateCategory}
+            onRename={handleRenameCategory}
+            onRecolor={handleRecolorCategory}
+            onDelete={handleDeleteCategory}
+          />
+        ) : null}
         <div style={{ marginTop: 8 }}>
           {(childrenOf.get(ROOT) ?? []).map((g) => (
             <GroupNode
@@ -127,6 +176,9 @@ export function GroupsPanel({
             group={selected}
             canCreate={canCreate}
             canDelete={canDelete}
+            categories={categories}
+            cclassDescr={cclassDescr}
+            linksByCst={linksByCst}
             onNotesChange={(notes) => setGroups((g) => g.map((x) => (x.id === selected.id ? { ...x, notes } : x)))}
           />
         ) : (
@@ -338,9 +390,11 @@ function GroupNode({
 }
 
 function GroupDetail({
-  kind, group, canCreate, canDelete, onNotesChange,
+  kind, group, canCreate, canDelete, categories, cclassDescr, linksByCst, onNotesChange,
 }: {
-  kind: GroupKind; group: GroupRow; canCreate: boolean; canDelete: boolean; onNotesChange: (notes: string) => void;
+  kind: GroupKind; group: GroupRow; canCreate: boolean; canDelete: boolean; categories: Category[];
+  cclassDescr: Record<string, string>; linksByCst: Record<string, { code: string; descr: string }[]>;
+  onNotesChange: (notes: string) => void;
 }) {
   const [notes, setNotes] = useState(group.notes ?? "");
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -427,6 +481,16 @@ function GroupDetail({
     } finally {
       setExporting(false);
     }
+  }
+
+  function handleAddCategory(linkId: string, category: Category) {
+    setItems((prev) => (prev ?? []).map((x) => (x.linkId === linkId ? { ...x, categories: [...x.categories, category] } : x)));
+    addCategoryToLink(kind, linkId, category.id);
+  }
+
+  function handleRemoveCategory(linkId: string, categoryId: string) {
+    setItems((prev) => (prev ?? []).map((x) => (x.linkId === linkId ? { ...x, categories: x.categories.filter((c) => c.id !== categoryId) } : x)));
+    removeCategoryFromLink(kind, linkId, categoryId);
   }
 
   return (
@@ -525,9 +589,15 @@ function GroupDetail({
                 key={it.linkId}
                 item={it}
                 canDelete={canDelete}
+                canCreate={canCreate}
                 kind={kind}
                 chain={kind === "produto" ? ncmChains[it.code] : undefined}
+                allCategories={categories}
+                cclassDescr={cclassDescr}
+                linksByCst={linksByCst}
                 onUnlink={() => handleUnlink(it.linkId)}
+                onAddCategory={(cat) => handleAddCategory(it.linkId, cat)}
+                onRemoveCategory={(catId) => handleRemoveCategory(it.linkId, catId)}
               />
             ))}
           </div>
@@ -556,9 +626,11 @@ function Chip({ label, value, color }: { label: string; value: string; color?: s
 }
 
 function LinkedItemRow({
-  item, canDelete, kind, chain, onUnlink,
+  item, canDelete, canCreate, kind, chain, allCategories, cclassDescr, linksByCst, onUnlink, onAddCategory, onRemoveCategory,
 }: {
-  item: LinkedItem; canDelete: boolean; kind: GroupKind; chain?: NcmNode[]; onUnlink: () => void;
+  item: LinkedItem; canDelete: boolean; canCreate: boolean; kind: GroupKind; chain?: NcmNode[];
+  allCategories: Category[]; cclassDescr: Record<string, string>; linksByCst: Record<string, { code: string; descr: string }[]>;
+  onUnlink: () => void; onAddCategory: (category: Category) => void; onRemoveCategory: (categoryId: string) => void;
 }) {
   const [notes, setNotes] = useState(item.notes ?? "");
   return (
@@ -575,13 +647,29 @@ function LinkedItemRow({
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        <Chip label="CST" value={item.cst} color={ACCENT} />
-        <Chip label="cClassTrib" value={item.cclass} color="#7c3aed" />
+        {item.cst ? (
+          <CstLinksInfo cst={item.cst} links={linksByCst[item.cst] ?? []}>
+            <Chip label="CST" value={item.cst} color={ACCENT} />
+          </CstLinksInfo>
+        ) : null}
+        {item.cclass ? (
+          <CclassInfo code={item.cclass} descr={cclassDescr[item.cclass] || ""}>
+            <Chip label="cClassTrib" value={item.cclass} color="#7c3aed" />
+          </CclassInfo>
+        ) : null}
         <Chip label="Alíq. IBS" value={item.aliqIbs} />
         <Chip label="Alíq. CBS" value={item.aliqCbs} />
         <Chip label="Red. IBS" value={item.redIbs} color="#0e7a6f" />
         <Chip label="Red. CBS" value={item.redCbs} color="#0e7a6f" />
       </div>
+
+      <CategoryChips
+        assigned={item.categories}
+        allCategories={allCategories}
+        canEdit={canCreate}
+        onAdd={onAddCategory}
+        onRemove={onRemoveCategory}
+      />
 
       {chain?.length ? (
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
@@ -604,6 +692,258 @@ function LinkedItemRow({
         placeholder="Observação sobre esta tributação neste grupo…"
         style={{ width: "100%", fontSize: 11.5, padding: "6px 9px", borderRadius: 6, border: "1px solid #e2e2de", outline: "none", background: "#fff" }}
       />
+    </div>
+  );
+}
+
+/** Categorias marcadas + botão para marcar mais uma, direto no card da tributação vinculada. */
+function CategoryChips({
+  assigned, allCategories, canEdit, onAdd, onRemove,
+}: {
+  assigned: Category[]; allCategories: Category[]; canEdit: boolean;
+  onAdd: (category: Category) => void; onRemove: (categoryId: string) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const available = allCategories.filter((c) => !assigned.some((a) => a.id === c.id));
+
+  if (!canEdit && !assigned.length) return null;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+      {assigned.map((c) => (
+        <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: `${c.color}1f`, color: c.color }}>
+          <span style={{ width: 7, height: 7, borderRadius: 99, background: c.color, flex: "none" }} />
+          {c.name}
+          {canEdit ? (
+            <span onClick={() => onRemove(c.id)} title="Remover categoria" style={{ cursor: "pointer", marginLeft: 1, lineHeight: 1 }}>✕</span>
+          ) : null}
+        </div>
+      ))}
+      {canEdit ? (
+        <div style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => setPickerOpen((v) => !v)}
+            className="hv-light"
+            style={{ fontSize: 10.5, fontWeight: 600, color: "#8a8d98", background: "#fff", border: "1px dashed #d5d5d0", borderRadius: 99, padding: "3px 8px", cursor: "pointer" }}
+          >
+            + Categoria
+          </button>
+          {pickerOpen ? (
+            <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#fff", border: "1px solid #e7e7e3", borderRadius: 8, boxShadow: "0 8px 24px rgba(20,20,30,.12)", zIndex: 5, minWidth: 170, maxHeight: 220, overflow: "auto", padding: 6 }}>
+              {available.length === 0 ? (
+                <div style={{ fontSize: 11.5, color: "#a0a3ad", fontStyle: "italic", padding: "5px 8px" }}>
+                  {allCategories.length === 0 ? "Nenhuma categoria criada ainda." : "Todas já marcadas."}
+                </div>
+              ) : (
+                available.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => { onAdd(c); setPickerOpen(false); }}
+                    className="hv-row"
+                    style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "5px 8px", borderRadius: 6, cursor: "pointer" }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: 99, background: c.color, flex: "none" }} />
+                    {c.name}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CategoriesModal({
+  kind, categories, canManage, onClose, onCreate, onRename, onRecolor, onDelete,
+}: {
+  kind: GroupKind; categories: Category[]; canManage: boolean; onClose: () => void;
+  onCreate: (name: string, color: string) => Promise<string | undefined>;
+  onRename: (id: string, name: string) => Promise<string | undefined>;
+  onRecolor: (id: string, color: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const [adding, setAdding] = useState(false);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <>
+      <div onClick={onClose} className="overlay-in" style={{ position: "fixed", inset: 0, background: "rgba(20,20,30,.45)", zIndex: 60 }} />
+      <div
+        role="dialog"
+        className="modal-in"
+        style={{
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          width: 420, maxWidth: "94vw", maxHeight: "80vh", overflow: "auto",
+          background: "#fff", borderRadius: 16, zIndex: 70, padding: "24px 26px",
+          boxShadow: "0 24px 80px rgba(20,20,30,.3)", cursor: "default",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Categorias de {kind === "produto" ? "produtos" : "serviços"}</div>
+          <div onClick={onClose} className="hv-gray" style={{ marginLeft: "auto", fontSize: 16, color: "#8a8d98", cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+          {categories.map((c) => (
+            <CategoryManageRow key={c.id} category={c} canManage={canManage} onRename={onRename} onRecolor={onRecolor} onDelete={onDelete} />
+          ))}
+          {categories.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: "#a0a3ad", fontStyle: "italic" }}>Nenhuma categoria criada ainda.</div>
+          ) : null}
+        </div>
+
+        {canManage ? (
+          adding ? (
+            <NewCategoryForm
+              onCancel={() => setAdding(false)}
+              onSubmit={async (name, color) => {
+                const err = await onCreate(name, color);
+                if (!err) setAdding(false);
+                return err;
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="hv-btn"
+              style={{ width: "100%", fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}
+            >
+              + Nova categoria
+            </button>
+          )
+        ) : null}
+      </div>
+    </>,
+    document.body,
+  );
+}
+
+function CategoryManageRow({
+  category, canManage, onRename, onRecolor, onDelete,
+}: {
+  category: Category; canManage: boolean;
+  onRename: (id: string, name: string) => Promise<string | undefined>;
+  onRecolor: (id: string, color: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [pickingColor, setPickingColor] = useState(false);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "6px 8px", borderRadius: 8, background: "#fafaf8" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => canManage && setPickingColor((v) => !v)}
+          title="Cor da categoria"
+          style={{ width: 14, height: 14, borderRadius: 99, background: category.color, border: "none", cursor: canManage ? "pointer" : "default", flex: "none", padding: 0 }}
+        />
+        {renaming ? (
+          <InlineNameForm
+            initial={category.name}
+            onCancel={() => setRenaming(false)}
+            onSubmit={async (name) => {
+              const err = await onRename(category.id, name);
+              if (!err) setRenaming(false);
+              return err;
+            }}
+          />
+        ) : (
+          <div
+            onDoubleClick={() => canManage && setRenaming(true)}
+            title={canManage ? "Duplo clique para renomear" : undefined}
+            style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {category.name}
+          </div>
+        )}
+        {canManage && !renaming ? (
+          <button
+            type="button"
+            onClick={() => { if (window.confirm(`Excluir a categoria "${category.name}"? Ela será removida de todas as tributações que a usam.`)) onDelete(category.id); }}
+            className="hv-danger"
+            style={{ background: "none", border: "none", color: "#c2c3c9", cursor: "pointer", padding: 2, flex: "none" }}
+          >
+            <svg width="13" height="13" viewBox="0 0 15 15">
+              <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : null}
+      </div>
+      {pickingColor ? (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {PALETTE.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => { onRecolor(category.id, c); setPickingColor(false); }}
+              style={{ width: 18, height: 18, borderRadius: 99, background: c, border: c === category.color ? "2px solid #33363f" : "1px solid #e2e2de", cursor: "pointer", padding: 0 }}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function NewCategoryForm({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (name: string, color: string) => Promise<string | undefined> }) {
+  const [name, setName] = useState("");
+  const [color, setColor] = useState(PALETTE[0]);
+  const [error, setError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (!name.trim()) return;
+    setBusy(true);
+    const err = await onSubmit(name, color);
+    setBusy(false);
+    setError(err);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <input
+        autoFocus
+        className="fc"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Nome da categoria…"
+        style={{ fontSize: 12.5, padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e2de", outline: "none" }}
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+      />
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {PALETTE.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setColor(c)}
+            style={{ width: 20, height: 20, borderRadius: 99, background: c, border: c === color ? "2px solid #33363f" : "1px solid #e2e2de", cursor: "pointer", padding: 0 }}
+          />
+        ))}
+      </div>
+      {error ? <div style={{ fontSize: 10.5, color: "#b3402e" }}>{error}</div> : null}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy}
+          className="hv-btn"
+          style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#fff", background: ACCENT, border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", opacity: busy ? 0.7 : 1 }}
+        >
+          {busy ? "Criando…" : "Criar"}
+        </button>
+        <button type="button" onClick={onCancel} className="hv-light" style={{ fontSize: 12, color: "#8a8d98", background: "#fff", border: "1px solid #e2e2de", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { codeSearchPatterns } from "@/lib/codeSearch";
 
 export type ProdutoResult = {
   ncm: string;
@@ -41,16 +42,12 @@ async function enrich(
 
 /** Busca por NCM (prefixo/substring, com ou sem pontuação) ou por descrição. */
 export async function searchProdutoPublic(term: string): Promise<ProdutoResult[]> {
-  const raw = term.trim().replace(/[,()]/g, "");
-  if (!raw) return [];
-  const digits = raw.replace(/\D/g, "");
+  if (!term.trim()) return [];
   const supabase = await createClient();
-  const patterns = [`ncm.ilike.%${raw}%`, `descr.ilike.%${raw}%`];
-  if (digits && digits !== raw) patterns.push(`ncm_digits.ilike.${digits}%`);
   const { data } = await supabase
     .from("produto_rows")
     .select("ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs")
-    .or(patterns.join(","))
+    .or(codeSearchPatterns(term, "ncm", "ncm_digits", ["descr"]))
     .limit(25);
   return enrich(supabase, (data ?? []) as RawRow[]);
 }
@@ -104,16 +101,12 @@ async function enrichServico(
 
 /** Busca por NBS (prefixo/substring, com ou sem pontuação), Descrição NBS ou Descrição item. */
 export async function searchServicoPublic(term: string): Promise<ServicoResult[]> {
-  const raw = term.trim().replace(/[,()]/g, "");
-  if (!raw) return [];
-  const digits = raw.replace(/\D/g, "");
+  if (!term.trim()) return [];
   const supabase = await createClient();
-  const patterns = [`item.ilike.%${raw}%`, `nbs.ilike.%${raw}%`, `nbs_descr.ilike.%${raw}%`];
-  if (digits && digits !== raw) patterns.push(`nbs_digits.ilike.${digits}%`);
   const { data } = await supabase
     .from("servico_rows")
     .select("item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome")
-    .or(patterns.join(","))
+    .or(codeSearchPatterns(term, "nbs", "nbs_digits", ["item", "nbs_descr"]))
     .limit(25);
   return enrichServico(supabase, (data ?? []) as RawServicoRow[]);
 }
