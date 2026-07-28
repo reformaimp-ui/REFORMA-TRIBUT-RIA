@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ACCENT } from "@/lib/design";
 import { NcmTreeView } from "@/components/app/NcmTreeView";
+import { useSingleClickOpen } from "@/components/app/useSingleClickOpen";
 
 /**
  * Envolve o NCM de um produto e abre um modal com a árvore completa de
@@ -14,12 +15,13 @@ export function NcmInfo({ code, children }: { code: string; children: React.Reac
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const clickOpen = useSingleClickOpen(setOpen);
 
   if (!code) return <>{children}</>;
 
   return (
     <>
-      <div onClick={() => setOpen(true)} style={{ cursor: "pointer" }} title="Ver árvore do NCM">
+      <div {...clickOpen} style={{ cursor: "pointer" }} title="Ver árvore do NCM">
         {children}
       </div>
 

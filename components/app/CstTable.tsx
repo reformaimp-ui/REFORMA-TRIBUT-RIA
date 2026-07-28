@@ -1,21 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ACCENT } from "@/lib/design";
 import { TableSearch } from "@/components/app/TableSearch";
 import { CstLinksInfo } from "@/components/app/CstLinksInfo";
 import { ConfirmForm } from "@/components/app/ConfirmForm";
-import { removeCst } from "@/app/(app)/ibs/actions";
+import { EditField, EditActions } from "@/components/app/EditRowForm";
+import { useIbsEditGuard } from "@/components/app/IbsEditGuard";
+import { removeCst, updateCst } from "@/app/(app)/ibs/actions";
 
 const th: React.CSSProperties = {
   padding: "10px 18px", background: "#fafaf8", borderBottom: "1px solid #ececea",
   fontSize: 10.5, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em",
 };
 
+type CstRow = { id: string; code: string; descr: string };
+
 export function CstTable({
-  rows, linksByCst, canDelete,
+  rows, linksByCst, canDelete, canEdit,
 }: {
-  rows: { code: string; descr: string }[]; linksByCst: Record<string, { code: string; descr: string }[]>; canDelete?: boolean;
+  rows: CstRow[]; linksByCst: Record<string, { code: string; descr: string }[]>; canDelete?: boolean; canEdit?: boolean;
 }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
@@ -23,6 +28,38 @@ export function CstTable({
     if (!term) return rows;
     return rows.filter((r) => r.code.toLowerCase().includes(term) || r.descr.toLowerCase().includes(term));
   }, [rows, q]);
+
+  const router = useRouter();
+  const { setDirty } = useIbsEditGuard();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ code: "", descr: "" });
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  function startEdit(r: CstRow) {
+    if (editId) return;
+    setEditId(r.id);
+    setDraft({ code: r.code, descr: r.descr });
+    setError("");
+    setDirty(true);
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setError("");
+    setDirty(false);
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    setPending(true);
+    const res = await updateCst(editId, draft.code, draft.descr);
+    setPending(false);
+    if (res.error) { setError(res.error); return; }
+    setEditId(null);
+    setDirty(false);
+    router.refresh();
+  }
 
   return (
     <div>
@@ -35,8 +72,23 @@ export function CstTable({
         </div>
         {filtered.map((r, i) => {
           const links = linksByCst[r.code] ?? [];
+          if (editId === r.id) {
+            return (
+              <div key={`${r.code}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 18px", borderBottom: "1px solid #f0f0ed", background: "#fffdf5" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12 }}>
+                  <EditField label="CST" value={draft.code} onChange={(v) => setDraft((d) => ({ ...d, code: v }))} />
+                  <EditField label="Descrição" value={draft.descr} onChange={(v) => setDraft((d) => ({ ...d, descr: v }))} />
+                </div>
+                <EditActions pending={pending} error={error} onCancel={cancelEdit} onSave={saveEdit} />
+              </div>
+            );
+          }
           return (
-            <div key={`${r.code}-${i}`} style={{ display: "flex", alignItems: "stretch", borderBottom: "1px solid #f0f0ed" }}>
+            <div
+              key={`${r.code}-${i}`}
+              onDoubleClick={() => { if (canEdit) startEdit(r); }}
+              style={{ display: "flex", alignItems: "stretch", borderBottom: "1px solid #f0f0ed" }}
+            >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <CstLinksInfo cst={r.code} links={links}>
                   <div className="hv-row" style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, alignItems: "center", padding: "10px 18px" }}>

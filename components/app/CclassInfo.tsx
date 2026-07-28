@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ACCENT } from "@/lib/design";
+import { useSingleClickOpen } from "@/components/app/useSingleClickOpen";
 
 /**
  * Envolve um gatilho (código ou linha de cClassTrib) e abre um modal com a
@@ -19,6 +20,7 @@ export function CclassInfo({ code, descr, children }: { code: string; descr: str
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const clickOpen = useSingleClickOpen(setOpen);
 
   const copy = async () => {
     try {
@@ -32,7 +34,7 @@ export function CclassInfo({ code, descr, children }: { code: string; descr: str
 
   return (
     <>
-      <div onClick={() => setOpen(true)} style={{ cursor: "pointer" }} title="Ver descrição completa">
+      <div {...clickOpen} style={{ cursor: "pointer" }} title="Ver descrição completa">
         {children}
       </div>
 

@@ -4,10 +4,12 @@ export function TableSearch({
   value,
   onChange,
   placeholder,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  disabled?: boolean;
 }) {
   return (
     <div style={{ position: "relative", width: 260, maxWidth: "100%" }}>
@@ -25,6 +27,7 @@ export function TableSearch({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         style={{
           width: "100%",
           fontSize: 12,
@@ -32,7 +35,8 @@ export function TableSearch({
           borderRadius: 8,
           border: "1px solid #e2e2de",
           outline: "none",
-          background: "#fafaf8",
+          background: disabled ? "#f0f0ee" : "#fafaf8",
+          cursor: disabled ? "not-allowed" : "text",
         }}
       />
       {value ? (

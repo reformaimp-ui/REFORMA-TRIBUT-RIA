@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ACCENT } from "@/lib/design";
+import { useSingleClickOpen } from "@/components/app/useSingleClickOpen";
 
 /**
  * Envolve o código do CST e abre um modal com os cClassTrib vinculados a ele.
@@ -13,6 +14,7 @@ export function CstLinksInfo({ cst, links, children }: { cst: string; links: { c
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const clickOpen = useSingleClickOpen(setOpen);
 
   const copy = async () => {
     const text = links.map((l) => (l.descr ? `${l.code} — ${l.descr}` : l.code)).join("\n");
@@ -27,7 +29,7 @@ export function CstLinksInfo({ cst, links, children }: { cst: string; links: { c
 
   return (
     <>
-      <div onClick={() => setOpen(true)} style={{ cursor: "pointer" }} title="Ver cClassTrib vinculados">
+      <div {...clickOpen} style={{ cursor: "pointer" }} title="Ver cClassTrib vinculados">
         {children}
       </div>
 

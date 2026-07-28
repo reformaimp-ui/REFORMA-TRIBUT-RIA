@@ -210,6 +210,77 @@ export async function finishImport() {
   revalidatePath("/ibs");
 }
 
+export async function updateCst(id: string, code: string, descr: string): Promise<IbsState> {
+  if (!id) return { error: "Linha inválida." };
+  if (!code.trim()) return { error: "Informe o código." };
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "edit")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("cst_rows").update({ code: code.trim(), descr: descr.trim() }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/ibs");
+  return {};
+}
+
+export async function updateCclass(id: string, code: string, descr: string): Promise<IbsState> {
+  if (!id) return { error: "Linha inválida." };
+  if (!code.trim()) return { error: "Informe o código." };
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "edit")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("cclass_rows").update({ code: code.trim(), descr: descr.trim() }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/ibs");
+  return {};
+}
+
+export async function updateProduto(
+  id: string,
+  fields: { ncm: string; descr: string; cst: string; cclass: string; aliq_ibs: string; aliq_cbs: string; red_ibs: string; red_cbs: string },
+): Promise<IbsState> {
+  if (!id) return { error: "Linha inválida." };
+  const ncm = fields.ncm.trim();
+  if (!ncm) return { error: "Informe o NCM." };
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "edit")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("produto_rows")
+    .update({
+      ncm, ncm_digits: onlyDigits(ncm), descr: fields.descr.trim(),
+      cst: fields.cst.trim(), cclass: fields.cclass.trim(),
+      aliq_ibs: fields.aliq_ibs.trim(), aliq_cbs: fields.aliq_cbs.trim(),
+      red_ibs: fields.red_ibs.trim(), red_cbs: fields.red_cbs.trim(),
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/ibs");
+  return {};
+}
+
+export async function updateServico(
+  id: string,
+  fields: { item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string },
+): Promise<IbsState> {
+  if (!id) return { error: "Linha inválida." };
+  const nbs = fields.nbs.trim();
+  if (!nbs) return { error: "Informe o NBS." };
+  const { member } = await getContext();
+  if (!canDo(member, "ibs", "edit")) return { error: "Você não tem permissão para isso." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("servico_rows")
+    .update({
+      item: fields.item.trim(), nbs, nbs_digits: onlyDigits(nbs), nbs_descr: fields.nbs_descr.trim(),
+      indop: fields.indop.trim(), local_ibs: fields.local_ibs.trim(),
+      cclass: fields.cclass.trim(), cclass_nome: fields.cclass_nome.trim(),
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/ibs");
+  return {};
+}
+
 export async function removeCst(fd: FormData) {
   const code = String(fd.get("code") || "");
   if (!code) return;

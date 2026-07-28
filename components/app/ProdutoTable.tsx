@@ -7,14 +7,17 @@ import { CclassInfo } from "@/components/app/CclassInfo";
 import { NcmInfo } from "@/components/app/NcmInfo";
 import { TableSearch } from "@/components/app/TableSearch";
 import { ConfirmForm } from "@/components/app/ConfirmForm";
-import { getNcmChainsForCodes, removeProduto, type NcmNode } from "@/app/(app)/ibs/actions";
+import { EditField, EditActions } from "@/components/app/EditRowForm";
+import { useIbsEditGuard } from "@/components/app/IbsEditGuard";
+import { getNcmChainsForCodes, removeProduto, updateProduto, type NcmNode } from "@/app/(app)/ibs/actions";
 
 const th: React.CSSProperties = {
   padding: "10px 18px", background: "#fafaf8", borderBottom: "1px solid #ececea",
   fontSize: 10.5, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em",
 };
 
-export type ProdRow = { ncm: string; descr: string; cst: string; cclass: string; aliq_ibs: string; aliq_cbs: string; red_ibs: string; red_cbs: string };
+export type ProdRow = { id: string; ncm: string; descr: string; cst: string; cclass: string; aliq_ibs: string; aliq_cbs: string; red_ibs: string; red_cbs: string };
+type ProdDraft = { ncm: string; descr: string; cst: string; cclass: string; aliq_ibs: string; aliq_cbs: string; red_ibs: string; red_cbs: string };
 
 const GRID = "110px 1.6fr 70px 90px 90px 90px 100px 100px";
 const GRID_DEL = `${GRID} 34px`;
@@ -26,15 +29,46 @@ function formatNcm(raw: string): string {
 }
 
 export function ProdutoTable({
-  rows, cclassDescr, total, page, pageSize, q, canDelete,
+  rows, cclassDescr, total, page, pageSize, q, canDelete, canEdit,
 }: {
   rows: ProdRow[]; cclassDescr: Record<string, string>;
-  total: number; page: number; pageSize: number; q: string; canDelete?: boolean;
+  total: number; page: number; pageSize: number; q: string; canDelete?: boolean; canEdit?: boolean;
 }) {
   const grid = canDelete ? GRID_DEL : GRID;
   const router = useRouter();
   const [term, setTerm] = useState(q);
   useEffect(() => setTerm(q), [q]);
+
+  const { setDirty } = useIbsEditGuard();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ProdDraft>({ ncm: "", descr: "", cst: "", cclass: "", aliq_ibs: "", aliq_cbs: "", red_ibs: "", red_cbs: "" });
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  function startEdit(r: ProdRow) {
+    if (editId) return;
+    setEditId(r.id);
+    setDraft({ ncm: r.ncm, descr: r.descr, cst: r.cst, cclass: r.cclass, aliq_ibs: r.aliq_ibs, aliq_cbs: r.aliq_cbs, red_ibs: r.red_ibs, red_cbs: r.red_cbs });
+    setError("");
+    setDirty(true);
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setError("");
+    setDirty(false);
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    setPending(true);
+    const res = await updateProduto(editId, draft);
+    setPending(false);
+    if (res.error) { setError(res.error); return; }
+    setEditId(null);
+    setDirty(false);
+    router.refresh();
+  }
 
   // Com busca ativa, já mostra a árvore de cada NCM resultante — 1 query em lote
   // cobrindo todas as linhas da página, em vez de exigir clique linha a linha.
@@ -79,7 +113,7 @@ export function ProdutoTable({
         <div style={{ fontSize: 11.5, color: "#8a8d98" }}>
           {total.toLocaleString("pt-BR")} produto(s){q ? ` para “${q}”` : ""}
         </div>
-        <TableSearch value={term} onChange={setTerm} placeholder="Pesquisar NCM, descrição, CST ou cClassTrib…" />
+        <TableSearch value={term} onChange={setTerm} placeholder="Pesquisar NCM, descrição, CST ou cClassTrib…" disabled={!!editId} />
       </div>
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: grid, gap: 10, whiteSpace: "nowrap", ...th }}>
@@ -87,9 +121,30 @@ export function ProdutoTable({
         </div>
         {rows.map((r, i) => {
           const chain = q.trim() ? chains[r.ncm] : undefined;
+          if (editId === r.id) {
+            return (
+              <div key={`${r.ncm}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 18px", borderBottom: "1px solid #f0f0ed", background: "#fffdf5" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  <EditField label="NCM" value={draft.ncm} onChange={(v) => setDraft((d) => ({ ...d, ncm: v }))} width={130} />
+                  <EditField label="Descrição" value={draft.descr} onChange={(v) => setDraft((d) => ({ ...d, descr: v }))} width={260} />
+                  <EditField label="CST" value={draft.cst} onChange={(v) => setDraft((d) => ({ ...d, cst: v }))} width={90} />
+                  <EditField label="cClassTrib" value={draft.cclass} onChange={(v) => setDraft((d) => ({ ...d, cclass: v }))} width={110} />
+                  <EditField label="Alíq. IBS" value={draft.aliq_ibs} onChange={(v) => setDraft((d) => ({ ...d, aliq_ibs: v }))} width={90} />
+                  <EditField label="Alíq. CBS" value={draft.aliq_cbs} onChange={(v) => setDraft((d) => ({ ...d, aliq_cbs: v }))} width={90} />
+                  <EditField label="Red. IBS" value={draft.red_ibs} onChange={(v) => setDraft((d) => ({ ...d, red_ibs: v }))} width={90} />
+                  <EditField label="Red. CBS" value={draft.red_cbs} onChange={(v) => setDraft((d) => ({ ...d, red_cbs: v }))} width={90} />
+                </div>
+                <EditActions pending={pending} error={error} onCancel={cancelEdit} onSave={saveEdit} />
+              </div>
+            );
+          }
           return (
             <div key={`${r.ncm}-${i}`}>
-              <div className="hv-row" style={{ display: "grid", gridTemplateColumns: grid, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: chain?.length ? "none" : "1px solid #f0f0ed" }}>
+              <div
+                className="hv-row"
+                onDoubleClick={() => { if (canEdit) startEdit(r); }}
+                style={{ display: "grid", gridTemplateColumns: grid, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: chain?.length ? "none" : "1px solid #f0f0ed" }}
+              >
                 <NcmInfo code={r.ncm}>
                   <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 2 }}>
                     {formatNcm(r.ncm)}
@@ -146,9 +201,9 @@ export function ProdutoTable({
             {from.toLocaleString("pt-BR")}–{to.toLocaleString("pt-BR")} de {total.toLocaleString("pt-BR")}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <PageBtn label="Anterior" disabled={page <= 1} onClick={() => go(page - 1)} />
+            <PageBtn label="Anterior" disabled={page <= 1 || !!editId} onClick={() => go(page - 1)} />
             <div style={{ fontSize: 12, color: "#4b4e58", padding: "0 6px" }}>Página {page} de {pages}</div>
-            <PageBtn label="Próxima" disabled={page >= pages} onClick={() => go(page + 1)} />
+            <PageBtn label="Próxima" disabled={page >= pages || !!editId} onClick={() => go(page + 1)} />
           </div>
         </div>
       ) : null}
