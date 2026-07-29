@@ -459,8 +459,9 @@ function GroupDetail({
       const refreshed = await listGroupItems(kind, group.id);
       setItems(refreshed);
       setLinkedIds(new Set(refreshed.map((x) => x.itemId)));
-      setQ("");
-      setResults([]);
+      // Mantém a busca e os resultados visíveis — o item vinculado passa a
+      // aparecer como "Já vinculado" na própria lista, sem precisar buscar de
+      // novo. Só o "✕" do campo de busca (TableSearch) limpa a lista.
     }
   }
 
