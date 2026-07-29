@@ -13,11 +13,12 @@ export type TabKey =
   | "clientes"
   | "equipe"
   | "ibs"
+  | "analise"
   | "base-conhecimento"
   | "arquivos"
   | "configuracoes";
 
-export type ActionTab = "tarefas" | "prazos" | "fluxos" | "clientes" | "ibs" | "base-conhecimento" | "arquivos";
+export type ActionTab = "tarefas" | "prazos" | "fluxos" | "clientes" | "ibs" | "analise" | "base-conhecimento" | "arquivos";
 export type Action = "create" | "edit" | "delete";
 
 export type Permissions = {
@@ -26,7 +27,7 @@ export type Permissions = {
 };
 
 export const TAB_ORDER: TabKey[] = [
-  "dashboard", "tarefas", "prazos", "fluxos", "clientes", "equipe", "ibs", "base-conhecimento", "arquivos", "configuracoes",
+  "dashboard", "tarefas", "prazos", "fluxos", "clientes", "equipe", "ibs", "analise", "base-conhecimento", "arquivos", "configuracoes",
 ];
 
 export const TAB_LABELS: Record<TabKey, string> = {
@@ -37,12 +38,13 @@ export const TAB_LABELS: Record<TabKey, string> = {
   clientes: "Clientes",
   equipe: "Equipe",
   ibs: "IBS e CBS",
+  analise: "Análise",
   "base-conhecimento": "Base de conhecimento",
   arquivos: "Arquivos",
   configuracoes: "Configurações",
 };
 
-export const ACTION_TABS: ActionTab[] = ["tarefas", "prazos", "fluxos", "clientes", "ibs", "base-conhecimento", "arquivos"];
+export const ACTION_TABS: ActionTab[] = ["tarefas", "prazos", "fluxos", "clientes", "ibs", "analise", "base-conhecimento", "arquivos"];
 
 export const ACTION_LABELS: Record<Action, string> = { create: "Criar", edit: "Editar", delete: "Excluir" };
 
