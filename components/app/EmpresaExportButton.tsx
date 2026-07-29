@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
-import { CONSUMIDOR_FINAL_DOC, type PartyAgg } from "@/lib/nfe/aggregate";
+import { CONSUMIDOR_FINAL_DOC, type PartyAgg, type ProductAgg } from "@/lib/nfe/aggregate";
 import { buildBrandedWorkbook, type BrandedSheetSpec, type TableColumn } from "@/lib/xlsxTemplate";
 
 function docLabel(doc: string): string {
@@ -19,6 +19,14 @@ const PARTY_COLUMNS: TableColumn[] = [
   { header: "IBS/CBS", key: "ibscbs", width: 10, align: "center" },
 ];
 
+const PRODUCT_COLUMNS: TableColumn[] = [
+  { header: "Produto", key: "nome", width: 40 },
+  { header: "CFOP", key: "cfop", width: 10, align: "center" },
+  { header: "Natureza da operação", key: "natOp", width: 24 },
+  { header: "Quantidade", key: "count", width: 12, align: "right" },
+  { header: "Valor total (R$)", key: "valor", width: 16, numFmt: "#,##0.00", align: "right" },
+];
+
 function partyRows(rows: PartyAgg[]): Record<string, string | number>[] {
   return rows.map((r) => ({
     nome: r.nome || "—",
@@ -27,6 +35,16 @@ function partyRows(rows: PartyAgg[]): Record<string, string | number>[] {
     notas: r.count,
     valor: r.total,
     ibscbs: r.temIbsCbs ? "Sim" : "Não",
+  }));
+}
+
+function productRows(rows: ProductAgg[]): Record<string, string | number>[] {
+  return rows.map((r) => ({
+    nome: r.nome || "—",
+    cfop: r.cfop || "—",
+    natOp: r.natOp || "—",
+    count: r.count,
+    valor: r.total,
   }));
 }
 
@@ -41,6 +59,8 @@ export function EmpresaExportButton({
   clientes,
   totalCompras,
   totalVendas,
+  produtosComprados,
+  produtosVendidos,
 }: {
   empresaNome: string;
   empresaCnpj: string | null;
@@ -48,6 +68,8 @@ export function EmpresaExportButton({
   clientes: PartyAgg[];
   totalCompras: number;
   totalVendas: number;
+  produtosComprados: ProductAgg[];
+  produtosVendidos: ProductAgg[];
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -55,6 +77,9 @@ export function EmpresaExportButton({
     setBusy(true);
     try {
       const cnpjLabel = empresaCnpj ? formatCnpjCpf(empresaCnpj) : "—";
+      const totalProdutosComprados = produtosComprados.reduce((s, p) => s + p.total, 0);
+      const totalProdutosVendidos = produtosVendidos.reduce((s, p) => s + p.total, 0);
+
       const sheets: BrandedSheetSpec[] = [
         {
           sheetName: "Fornecedores",
@@ -77,6 +102,28 @@ export function EmpresaExportButton({
           ],
           columns: PARTY_COLUMNS,
           rows: partyRows(clientes),
+        },
+        {
+          sheetName: "Produtos Comprados",
+          summary: [
+            { label: "Empresa", value: empresaNome },
+            { label: "CNPJ", value: cnpjLabel },
+            { label: "Produtos", value: produtosComprados.length },
+            { label: "Total comprado (R$)", value: totalProdutosComprados, numFmt: "#,##0.00" },
+          ],
+          columns: PRODUCT_COLUMNS,
+          rows: productRows(produtosComprados),
+        },
+        {
+          sheetName: "Produtos Vendidos",
+          summary: [
+            { label: "Empresa", value: empresaNome },
+            { label: "CNPJ", value: cnpjLabel },
+            { label: "Produtos", value: produtosVendidos.length },
+            { label: "Total vendido (R$)", value: totalProdutosVendidos, numFmt: "#,##0.00" },
+          ],
+          columns: PRODUCT_COLUMNS,
+          rows: productRows(produtosVendidos),
         },
       ];
 

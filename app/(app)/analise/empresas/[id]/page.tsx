@@ -75,18 +75,27 @@ export default async function EmpresaDetailPage({
 
   let produtosComprados: ProductAgg[] = [];
   let produtosVendidos: ProductAgg[] = [];
-  if (tab === "produtos-comprados" || tab === "produtos-vendidos") {
-    const { data: items } = await supabase
-      .from("nfe_note_items")
-      .select("tipo,nome,cfop,nat_op,valor,created_at")
-      .eq("empresa_id", id)
-      .eq("tipo", tab === "produtos-comprados" ? "compra" : "venda")
-      .order("created_at", { ascending: true })
-      .limit(ROW_CAP);
-    const rows = (items ?? []).map((r) => ({ nome: r.nome, cfop: r.cfop ?? "", natOp: r.nat_op ?? "", valor: Number(r.valor) }));
-    if (tab === "produtos-comprados") produtosComprados = aggregateProducts(rows);
-    else produtosVendidos = aggregateProducts(rows);
-  }
+
+  // Sempre carregar produtos comprados e vendidos (para exportação XLSX)
+  const { data: comprasItems } = await supabase
+    .from("nfe_note_items")
+    .select("tipo,nome,cfop,nat_op,valor,created_at")
+    .eq("empresa_id", id)
+    .eq("tipo", "compra")
+    .order("created_at", { ascending: true })
+    .limit(ROW_CAP);
+  const comprasRows = (comprasItems ?? []).map((r) => ({ nome: r.nome, cfop: r.cfop ?? "", natOp: r.nat_op ?? "", valor: Number(r.valor) }));
+  produtosComprados = aggregateProducts(comprasRows);
+
+  const { data: vendasItems } = await supabase
+    .from("nfe_note_items")
+    .select("tipo,nome,cfop,nat_op,valor,created_at")
+    .eq("empresa_id", id)
+    .eq("tipo", "venda")
+    .order("created_at", { ascending: true })
+    .limit(ROW_CAP);
+  const vendasRows = (vendasItems ?? []).map((r) => ({ nome: r.nome, cfop: r.cfop ?? "", natOp: r.nat_op ?? "", valor: Number(r.valor) }));
+  produtosVendidos = aggregateProducts(vendasRows);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -109,6 +118,8 @@ export default async function EmpresaDetailPage({
           clientes={clientes}
           totalCompras={totalCompras}
           totalVendas={totalVendas}
+          produtosComprados={produtosComprados}
+          produtosVendidos={produtosVendidos}
         />
         {canDelete ? (
           <ConfirmForm
