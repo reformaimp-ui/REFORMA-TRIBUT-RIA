@@ -33,7 +33,10 @@ export type ParsedNfe = {
   valorCbs: number | null;
   valorTotal: number;
   temIbsCbs: boolean;
+  itens: ParsedNfeItem[];
 };
+
+export type ParsedNfeItem = { nome: string; valor: number; cfop: string };
 
 export type ParseNfeResult = { ok: true; data: ParsedNfe } | { ok: false; error: string };
 
@@ -68,6 +71,7 @@ const ParsedNfeSchema = z.object({
   valorCbs: z.number().nullable(),
   valorTotal: z.number({ invalid_type_error: "Valor total da nota (vNF) não encontrado." }),
   temIbsCbs: z.boolean(),
+  itens: z.array(z.object({ nome: z.string(), valor: z.number(), cfop: z.string() })),
 });
 
 /** Busca uma chave em qualquer profundidade da árvore parseada — tolera as
@@ -105,6 +109,23 @@ function hasIbsCbs(infNFe: Record<string, unknown>): boolean {
     if (!item || typeof item !== "object") return false;
     const imposto = (item as Record<string, unknown>).imposto as Record<string, unknown> | undefined;
     return !!imposto && imposto.IBSCBS != null;
+  });
+}
+
+/** Extrai nome, valor líquido de desconto e CFOP de cada item (<det><prod>). */
+function extractItems(infNFe: Record<string, unknown>): ParsedNfeItem[] {
+  const det = infNFe.det;
+  if (!det) return [];
+  const items = Array.isArray(det) ? det : [det];
+  return items.flatMap((item): ParsedNfeItem[] => {
+    if (!item || typeof item !== "object") return [];
+    const prod = (item as Record<string, unknown>).prod as Record<string, unknown> | undefined;
+    if (!prod) return [];
+    const nome = str(prod.xProd);
+    if (!nome) return [];
+    const vProd = numOrNull(prod.vProd) ?? 0;
+    const vDesc = numOrNull(prod.vDesc) ?? 0;
+    return [{ nome, valor: vProd - vDesc, cfop: str(prod.CFOP) }];
   });
 }
 
@@ -181,6 +202,7 @@ export function parseNfeXml(xmlText: string): ParseNfeResult {
     valorCbs: numOrNull(icmsTot.vCBS),
     valorTotal: numOrNull(icmsTot.vNF) as unknown as number,
     temIbsCbs: hasIbsCbs(infNFe),
+    itens: extractItems(infNFe),
   };
 
   const parsed = ParsedNfeSchema.safeParse(candidate);

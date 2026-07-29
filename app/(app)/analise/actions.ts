@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
 import { canDo } from "@/lib/permissions";
-import { parseNfeXml, checkTipoModConsistency } from "@/lib/nfe/parseNfe";
+import { parseNfeXml, checkTipoModConsistency, type ParsedNfeItem } from "@/lib/nfe/parseNfe";
 import { CONSUMIDOR_FINAL_DOC } from "@/lib/nfe/aggregate";
 
 export type NfeTipo = "compra" | "venda";
@@ -13,14 +13,6 @@ export type NfeFile = { name: string; xml: string };
 export type NfeRejected = { file: string; reason: string };
 export type NfeImportResult = { inserted: number; rejected: NfeRejected[]; error?: string };
 export type EmpresaState = { error?: string };
-
-// Remove duplicatas dentro do mesmo lote (o upsert não pode afetar a mesma linha 2x
-// — duas notas com a mesma chave no mesmo lote, mantém a última).
-function dedupeByChave<T extends { chave: string }>(rows: T[]): T[] {
-  const map = new Map<string, T>();
-  for (const r of rows) map.set(r.chave, r);
-  return [...map.values()];
-}
 
 /**
  * Importa um lote de XMLs já lidos no client (FileReader). Chamada em loop
@@ -40,7 +32,7 @@ export async function importNfeChunk(tipo: NfeTipo, empresaId: string, files: Nf
   if (!empresa) return { inserted: 0, rejected: [], error: "Empresa inválida — recarregue a página e tente novamente." };
 
   const rejected: NfeRejected[] = [];
-  const rows: Record<string, unknown>[] = [];
+  const parsedByChave = new Map<string, { row: Record<string, unknown>; itens: ParsedNfeItem[]; natOp: string }>();
 
   for (const f of files) {
     const res = parseNfeXml(f.xml);
@@ -54,44 +46,75 @@ export async function importNfeChunk(tipo: NfeTipo, empresaId: string, files: Nf
       rejected.push({ file: f.name, reason: mismatch });
       continue;
     }
-    rows.push({
-      office_id: office.id,
-      empresa_id: empresaId,
-      tipo,
-      mod: d.mod,
-      chave: d.chave,
-      numero: d.numero,
-      serie: d.serie,
-      data_emissao: d.dataEmissao,
-      natureza_operacao: d.naturezaOperacao,
-      emit_documento: d.emitDocumento,
-      emit_nome: d.emitNome,
-      emit_fantasia: d.emitFantasia,
-      emit_uf: d.emitUf,
-      emit_municipio: d.emitMunicipio,
-      dest_documento: d.destDocumento,
-      dest_nome: d.destNome,
-      dest_uf: d.destUf,
-      dest_municipio: d.destMunicipio,
-      valor_produtos: d.valorProdutos,
-      valor_desconto: d.valorDesconto,
-      valor_frete: d.valorFrete,
-      valor_icms: d.valorIcms,
-      valor_pis: d.valorPis,
-      valor_cofins: d.valorCofins,
-      valor_ibs: d.valorIbs,
-      valor_cbs: d.valorCbs,
-      valor_total: d.valorTotal,
-      tem_ibs_cbs: d.temIbsCbs,
-      arquivo_nome: f.name,
+    parsedByChave.set(d.chave, {
+      natOp: d.naturezaOperacao,
+      itens: d.itens,
+      row: {
+        office_id: office.id,
+        empresa_id: empresaId,
+        tipo,
+        mod: d.mod,
+        chave: d.chave,
+        numero: d.numero,
+        serie: d.serie,
+        data_emissao: d.dataEmissao,
+        natureza_operacao: d.naturezaOperacao,
+        emit_documento: d.emitDocumento,
+        emit_nome: d.emitNome,
+        emit_fantasia: d.emitFantasia,
+        emit_uf: d.emitUf,
+        emit_municipio: d.emitMunicipio,
+        dest_documento: d.destDocumento,
+        dest_nome: d.destNome,
+        dest_uf: d.destUf,
+        dest_municipio: d.destMunicipio,
+        valor_produtos: d.valorProdutos,
+        valor_desconto: d.valorDesconto,
+        valor_frete: d.valorFrete,
+        valor_icms: d.valorIcms,
+        valor_pis: d.valorPis,
+        valor_cofins: d.valorCofins,
+        valor_ibs: d.valorIbs,
+        valor_cbs: d.valorCbs,
+        valor_total: d.valorTotal,
+        tem_ibs_cbs: d.temIbsCbs,
+        arquivo_nome: f.name,
+      },
     });
   }
 
-  const deduped = dedupeByChave(rows as { chave: string }[]);
-  if (!deduped.length) return { inserted: 0, rejected };
+  if (!parsedByChave.size) return { inserted: 0, rejected };
 
-  const { error } = await supabase.from("nfe_notes").upsert(deduped, { onConflict: "office_id,chave" });
+  const deduped = [...parsedByChave.values()].map((v) => v.row);
+  const { data: upserted, error } = await supabase
+    .from("nfe_notes")
+    .upsert(deduped, { onConflict: "office_id,chave" })
+    .select("id,chave");
   if (error) return { inserted: 0, rejected, error: error.message };
+
+  // Reimportar substitui os itens da nota (não duplica) — apaga os antigos
+  // daquelas notas e insere os itens recém-parseados.
+  const notes = (upserted ?? []) as { id: string; chave: string }[];
+  const noteIds = notes.map((n) => n.id);
+  if (noteIds.length) {
+    await supabase.from("nfe_note_items").delete().in("note_id", noteIds);
+    const itemRows = notes.flatMap((n) => {
+      const parsed = parsedByChave.get(n.chave);
+      if (!parsed) return [];
+      return parsed.itens.map((it) => ({
+        office_id: office.id,
+        note_id: n.id,
+        empresa_id: empresaId,
+        tipo,
+        nome: it.nome,
+        cfop: it.cfop,
+        nat_op: parsed.natOp,
+        valor: it.valor,
+      }));
+    });
+    if (itemRows.length) await supabase.from("nfe_note_items").insert(itemRows);
+  }
+
   return { inserted: deduped.length, rejected };
 }
 

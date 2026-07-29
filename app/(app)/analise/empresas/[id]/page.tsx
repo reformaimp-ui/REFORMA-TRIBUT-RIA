@@ -5,13 +5,17 @@ import { getContext } from "@/lib/data";
 import { canDo, canViewTab } from "@/lib/permissions";
 import { ACCENT } from "@/lib/design";
 import { PartiesTable } from "@/components/app/PartiesTable";
+import { ProductsTable } from "@/components/app/ProductsTable";
+import { EmpresaDetailTabs } from "@/components/app/EmpresaDetailTabs";
 import { EmpresaExportButton } from "@/components/app/EmpresaExportButton";
 import { ConfirmForm } from "@/components/app/ConfirmForm";
 import { deleteEmpresaAndRedirect } from "@/app/(app)/analise/actions";
-import { aggregateParties, CONSUMIDOR_FINAL_DOC, type PartyAgg } from "@/lib/nfe/aggregate";
+import { aggregateParties, aggregateProducts, CONSUMIDOR_FINAL_DOC, type PartyAgg, type ProductAgg } from "@/lib/nfe/aggregate";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
 
 export const dynamic = "force-dynamic";
+
+const ROW_CAP = 5000;
 
 const BRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -24,11 +28,21 @@ function kpi(label: string, value: React.ReactNode, color?: string) {
   );
 }
 
-export default async function EmpresaDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EmpresaDetailPage({
+  params, searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
   const { member } = await getContext();
   if (!canViewTab(member, "analise")) redirect("/dashboard");
   const canDelete = canDo(member, "analise", "delete");
+  const sp = await searchParams;
+  const tab =
+    sp.tab === "clientes" ? "clientes" :
+    sp.tab === "produtos-comprados" ? "produtos-comprados" :
+    sp.tab === "produtos-vendidos" ? "produtos-vendidos" : "fornecedores";
   const supabase = await createClient();
 
   const { data: empresa } = await supabase.from("nfe_empresas").select("id,nome,cnpj").eq("id", id).maybeSingle();
@@ -38,7 +52,7 @@ export default async function EmpresaDetailPage({ params }: { params: Promise<{ 
     .from("nfe_notes")
     .select("tipo,emit_documento,emit_nome,emit_uf,dest_documento,dest_nome,dest_uf,valor_total,tem_ibs_cbs")
     .eq("empresa_id", id)
-    .limit(5000);
+    .limit(ROW_CAP);
 
   const compras = (notes ?? []).filter((r) => r.tipo === "compra");
   const vendas = (notes ?? []).filter((r) => r.tipo === "venda");
@@ -58,6 +72,21 @@ export default async function EmpresaDetailPage({ params }: { params: Promise<{ 
 
   const totalCompras = compras.reduce((s, r) => s + Number(r.valor_total), 0);
   const totalVendas = vendas.reduce((s, r) => s + Number(r.valor_total), 0);
+
+  let produtosComprados: ProductAgg[] = [];
+  let produtosVendidos: ProductAgg[] = [];
+  if (tab === "produtos-comprados" || tab === "produtos-vendidos") {
+    const { data: items } = await supabase
+      .from("nfe_note_items")
+      .select("tipo,nome,cfop,nat_op,valor,created_at")
+      .eq("empresa_id", id)
+      .eq("tipo", tab === "produtos-comprados" ? "compra" : "venda")
+      .order("created_at", { ascending: true })
+      .limit(ROW_CAP);
+    const rows = (items ?? []).map((r) => ({ nome: r.nome, cfop: r.cfop ?? "", natOp: r.nat_op ?? "", valor: Number(r.valor) }));
+    if (tab === "produtos-comprados") produtosComprados = aggregateProducts(rows);
+    else produtosVendidos = aggregateProducts(rows);
+  }
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -111,17 +140,29 @@ export default async function EmpresaDetailPage({ params }: { params: Promise<{ 
           {kpi("Fornecedores / Clientes", `${fornecedores.length} / ${clientes.length}`)}
         </div>
 
-        <section>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Fornecedores</div>
-          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Emitentes das notas de compra desta empresa.</div>
-          <PartiesTable rows={fornecedores} tipo="compra" empresaId={empresa.id} canDelete={canDelete} emptyLabel="Nenhuma nota de compra importada para esta empresa ainda." />
-        </section>
+        <EmpresaDetailTabs empresaId={empresa.id} tab={tab} />
 
-        <section>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Clientes</div>
-          <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Destinatários das notas de venda desta empresa.</div>
-          <PartiesTable rows={clientes} tipo="venda" empresaId={empresa.id} canDelete={canDelete} emptyLabel="Nenhuma nota de venda importada para esta empresa ainda." />
-        </section>
+        {tab === "fornecedores" ? (
+          <section>
+            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Emitentes das notas de compra desta empresa.</div>
+            <PartiesTable rows={fornecedores} tipo="compra" empresaId={empresa.id} canDelete={canDelete} emptyLabel="Nenhuma nota de compra importada para esta empresa ainda." />
+          </section>
+        ) : tab === "clientes" ? (
+          <section>
+            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Destinatários das notas de venda desta empresa.</div>
+            <PartiesTable rows={clientes} tipo="venda" empresaId={empresa.id} canDelete={canDelete} emptyLabel="Nenhuma nota de venda importada para esta empresa ainda." />
+          </section>
+        ) : tab === "produtos-comprados" ? (
+          <section>
+            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Itens das notas de compra desta empresa, agrupados por produto + CFOP.</div>
+            <ProductsTable rows={produtosComprados} emptyLabel="Nenhum item de compra importado para esta empresa ainda." />
+          </section>
+        ) : (
+          <section>
+            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Itens das notas de venda desta empresa, agrupados por produto + CFOP.</div>
+            <ProductsTable rows={produtosVendidos} emptyLabel="Nenhum item de venda importado para esta empresa ainda." />
+          </section>
+        )}
       </div>
     </div>
   );

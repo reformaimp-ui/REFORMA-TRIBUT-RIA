@@ -23,3 +23,27 @@ export function aggregateParties(rows: { doc: string; nome: string; uf: string; 
 }
 
 export const CONSUMIDOR_FINAL_DOC = "CONSUMIDOR_FINAL";
+
+export type ProductAgg = { nome: string; cfop: string; natOp: string; count: number; total: number };
+
+/**
+ * Agrega itens de nota por nome do produto + CFOP — o mesmo produto com CFOPs
+ * diferentes vira linhas separadas de propósito (natureza da operação distinta).
+ * Espera as linhas já ordenadas por data crescente: o natOp exibido é o do
+ * último item visto pra cada chave, ou seja, o mais recente.
+ */
+export function aggregateProducts(rows: { nome: string; cfop: string; natOp: string; valor: number }[]): ProductAgg[] {
+  const map = new Map<string, ProductAgg>();
+  for (const r of rows) {
+    const key = `${r.nome}|${r.cfop}`;
+    const cur = map.get(key);
+    if (cur) {
+      cur.count += 1;
+      cur.total += r.valor;
+      cur.natOp = r.natOp;
+    } else {
+      map.set(key, { nome: r.nome, cfop: r.cfop, natOp: r.natOp, count: 1, total: r.valor });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
+}
