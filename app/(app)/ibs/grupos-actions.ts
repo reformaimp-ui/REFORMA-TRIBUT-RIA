@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
 import { canDo } from "@/lib/permissions";
 import { codeSearchPatterns } from "@/lib/codeSearch";
+import { getNcmChainsForCodes, type NcmNode } from "./actions";
 
 export type GroupKind = "produto" | "servico";
 export type GroupRow = { id: string; parent_id: string | null; name: string; notes: string | null; position: number };
@@ -329,7 +330,14 @@ export async function removeCategoryFromLink(kind: GroupKind, linkId: string, ca
 }
 
 export type ExportNode = { id: string; name: string; notes: string | null; items: LinkedItem[]; children: ExportNode[] };
-export type GroupExportData = { officeName: string; generatedAt: string; kind: GroupKind; root: ExportNode };
+export type GroupExportData = {
+  officeName: string; generatedAt: string; kind: GroupKind; root: ExportNode;
+  chainsByCode: Record<string, NcmNode[]>;
+};
+
+function collectCodes(node: ExportNode): string[] {
+  return [...node.items.map((it) => it.code), ...node.children.flatMap(collectCodes)];
+}
 
 /** Remove da árvore os subgrupos que não têm nenhuma tributação, direta ou em descendentes. */
 function pruneEmpty(node: ExportNode): ExportNode | null {
@@ -367,5 +375,11 @@ export async function getGroupExportData(kind: GroupKind, groupId: string): Prom
 
   const root = await buildNode(rootGroup);
   const prunedChildren = root.children.map(pruneEmpty).filter((c): c is ExportNode => c !== null);
-  return { officeName: office.name, generatedAt: new Date().toISOString(), kind, root: { ...root, children: prunedChildren } };
+  const prunedRoot = { ...root, children: prunedChildren };
+
+  // Cadeia de NCM (capítulo → posição → subposição → item) de cada tributação —
+  // o PDF reproduz o mesmo breadcrumb mostrado no card da aba de grupos.
+  const chainsByCode = kind === "produto" ? await getNcmChainsForCodes(collectCodes(prunedRoot)) : {};
+
+  return { officeName: office.name, generatedAt: new Date().toISOString(), kind, root: prunedRoot, chainsByCode };
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ACCENT } from "@/lib/design";
+import { Spinner } from "@/components/app/Spinner";
 import { parseNfeXml, checkTipoModConsistency, formatCnpjCpf, type ParsedNfe } from "@/lib/nfe/parseNfe";
 import { importNfeChunk, finishNfeImport, type NfeTipo, type NfeRejected } from "@/app/(app)/analise/actions";
 
@@ -27,6 +28,16 @@ function readFileAsText(f: File): Promise<string> {
   });
 }
 
+/** Extrai todos os .xml de um .zip (ignora pastas e outros tipos de arquivo dentro dele). */
+async function readZipXmls(f: File): Promise<{ name: string; xml: string }[]> {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(f);
+  const entries = Object.values(zip.files).filter((e) => !e.dir && e.name.toLowerCase().endsWith(".xml"));
+  return Promise.all(
+    entries.map(async (e) => ({ name: e.name.split("/").pop() || e.name, xml: await e.async("string") })),
+  );
+}
+
 const BRL = (v: number | null) => (v == null ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
 const LBL: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 };
 
@@ -37,6 +48,7 @@ export function NfeImportPanel({ canImport, empresas }: { canImport: boolean; em
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [running, setRunning] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [report, setReport] = useState<{ inserted: number; rejected: NfeRejected[]; error?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -50,9 +62,12 @@ export function NfeImportPanel({ canImport, empresas }: { canImport: boolean; em
   };
 
   const addFiles = async (files: FileList | File[]) => {
-    const list = Array.from(files).filter((f) => f.name.toLowerCase().endsWith(".xml"));
-    const read = await Promise.all(
-      list.map(async (f) => {
+    const all = Array.from(files);
+    const xmlFiles = all.filter((f) => f.name.toLowerCase().endsWith(".xml"));
+    const zipFiles = all.filter((f) => f.name.toLowerCase().endsWith(".zip"));
+
+    const fromXml = await Promise.all(
+      xmlFiles.map(async (f) => {
         try {
           const xml = await readFileAsText(f);
           return buildEntry(f.name, xml);
@@ -61,7 +76,28 @@ export function NfeImportPanel({ canImport, empresas }: { canImport: boolean; em
         }
       }),
     );
-    setEntries((prev) => [...prev, ...read]);
+
+    let fromZip: FileEntry[] = [];
+    if (zipFiles.length) {
+      setExtracting(true);
+      try {
+        const perZip = await Promise.all(
+          zipFiles.map(async (f) => {
+            try {
+              const xmls = await readZipXmls(f);
+              return xmls.map(({ name, xml }) => buildEntry(name, xml));
+            } catch {
+              return [{ name: f.name, xml: "", error: "Falha ao abrir o arquivo .zip." } as FileEntry];
+            }
+          }),
+        );
+        fromZip = perZip.flat();
+      } finally {
+        setExtracting(false);
+      }
+    }
+
+    setEntries((prev) => [...prev, ...fromXml, ...fromZip]);
     setReport(null);
   };
 
@@ -203,7 +239,7 @@ export function NfeImportPanel({ canImport, empresas }: { canImport: boolean; em
         <input
           ref={fileRef}
           type="file"
-          accept=".xml,text/xml"
+          accept=".xml,text/xml,.zip,application/zip"
           multiple
           disabled={!canUse}
           onChange={(e) => { if (e.target.files?.length) void addFiles(e.target.files); e.target.value = ""; }}
@@ -214,9 +250,15 @@ export function NfeImportPanel({ canImport, empresas }: { canImport: boolean; em
           <path d="M9.5 1.5V5H13" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
         </svg>
         <span style={{ fontSize: 12.5, color: "#4b4e58" }}>
-          <b style={{ color: ACCENT }}>Escolher arquivos .xml</b> ou arraste aqui — pode selecionar vários de uma vez
+          <b style={{ color: ACCENT }}>Escolher arquivos .xml ou .zip</b> ou arraste aqui — pode selecionar vários de uma vez, inclusive .zip com vários XMLs dentro
         </span>
       </div>
+
+      {extracting ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: "#8a8d98" }}>
+          <Spinner size={11} /> Extraindo XMLs do .zip…
+        </div>
+      ) : null}
 
       {entries.length ? (
         <div style={{ border: "1px solid #ececea", borderRadius: 10, overflow: "hidden" }}>
