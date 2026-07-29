@@ -15,6 +15,7 @@ import {
 } from "@/app/(app)/ibs/grupos-actions";
 import { getNcmChainsForCodes, type NcmNode } from "@/app/(app)/ibs/actions";
 import { exportGroupPdf } from "@/lib/groupPdf";
+import { exportGroupXlsx } from "@/lib/groupXlsx";
 
 const ROOT = "__root__";
 
@@ -404,6 +405,7 @@ function GroupDetail({
   const [results, setResults] = useState<SearchItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [ncmChains, setNcmChains] = useState<Record<string, NcmNode[]>>({});
 
   useEffect(() => {
@@ -474,13 +476,15 @@ function GroupDetail({
     }
   }
 
-  async function handleExportPdf() {
+  async function handleExport(fmt: "pdf" | "xlsx") {
     setExporting(true);
     try {
       const data = await getGroupExportData(kind, group.id);
-      await exportGroupPdf(data);
+      if (fmt === "pdf") await exportGroupPdf(data);
+      else await exportGroupXlsx(data);
     } finally {
       setExporting(false);
+      setExportModalOpen(false);
     }
   }
 
@@ -500,7 +504,7 @@ function GroupDetail({
         <div style={{ fontSize: 15, fontWeight: 700 }}>{group.name}</div>
         <button
           type="button"
-          onClick={handleExportPdf}
+          onClick={() => setExportModalOpen(true)}
           disabled={exporting}
           className="hv-light"
           style={{
@@ -516,9 +520,13 @@ function GroupDetail({
               <path d="M7.5 1.5v8m0 0L4.5 6.5m3 3l3-3M2 11.5v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
-          {exporting ? "Gerando…" : "Exportar PDF"}
+          {exporting ? "Gerando…" : "Exportar"}
         </button>
       </div>
+
+      {exportModalOpen ? (
+        <ExportModal exporting={exporting} onClose={() => setExportModalOpen(false)} onExport={handleExport} />
+      ) : null}
 
       <div>
         <div style={{ fontSize: 11, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>Observações</div>
@@ -754,6 +762,92 @@ function CategoryChips({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ExportModal({
+  exporting, onClose, onExport,
+}: {
+  exporting: boolean; onClose: () => void; onExport: (fmt: "pdf" | "xlsx") => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
+    <>
+      <div onClick={() => !exporting && onClose()} className="overlay-in" style={{ position: "fixed", inset: 0, background: "rgba(20,20,30,.45)", zIndex: 60 }} />
+      <div
+        role="dialog"
+        className="modal-in"
+        style={{
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          width: 300, maxWidth: "94vw",
+          background: "#fff", borderRadius: 16, zIndex: 70, padding: "20px 20px 16px",
+          boxShadow: "0 24px 80px rgba(20,20,30,.3)", cursor: "default",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>Exportar</div>
+          <div onClick={() => !exporting && onClose()} className="hv-gray" style={{ marginLeft: "auto", fontSize: 16, color: "#8a8d98", cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <ExportOption
+            label="Planilha (XLSX)"
+            desc="Tabela com todas as tributações do grupo"
+            disabled={exporting}
+            onClick={() => onExport("xlsx")}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="13" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M4.5 4.5l3.5 7M8 4.5l-3.5 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            }
+          />
+          <ExportOption
+            label="PDF"
+            desc="Cards formatados, prontos pra impressão"
+            disabled={exporting}
+            onClick={() => onExport("pdf")}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 16 16"><path d="M9.5 1.5H4a1 1 0 00-1 1v11a1 1 0 001 1h8a1 1 0 001-1V5z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M9.5 1.5V5H13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
+            }
+          />
+        </div>
+        {exporting ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: "#8a8d98", marginTop: 12 }}>
+            <Spinner size={11} /> Gerando…
+          </div>
+        ) : null}
+      </div>
+    </>,
+    document.body,
+  );
+}
+
+function ExportOption({
+  label, desc, icon, disabled, onClick,
+}: {
+  label: string; desc: string; icon: React.ReactNode; disabled: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="hv-row"
+      style={{
+        display: "flex", alignItems: "center", gap: 10, textAlign: "left", width: "100%",
+        background: "#fafaf8", border: "1px solid #e7e7e3", borderRadius: 10, padding: "10px 12px",
+        cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <div style={{ width: 30, height: 30, flex: "none", borderRadius: 8, background: "#eef1ff", color: ACCENT, display: "grid", placeItems: "center" }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#33363f" }}>{label}</div>
+        <div style={{ fontSize: 11, color: "#8a8d98" }}>{desc}</div>
+      </div>
+    </button>
   );
 }
 
