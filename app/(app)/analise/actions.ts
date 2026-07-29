@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
 import { canDo } from "@/lib/permissions";
 import { parseNfeXml, checkTipoModConsistency } from "@/lib/nfe/parseNfe";
+import { CONSUMIDOR_FINAL_DOC } from "@/lib/nfe/aggregate";
 
 export type NfeTipo = "compra" | "venda";
 export type NfeFile = { name: string; xml: string };
@@ -112,4 +114,49 @@ export async function addEmpresa(_p: EmpresaState, fd: FormData): Promise<Empres
   if (error) return { error: error.message.includes("nfe_empresas_cnpj_idx") ? "Já existe uma empresa cadastrada com esse CNPJ." : error.message };
   revalidatePath("/analise");
   return {};
+}
+
+/** Apaga a empresa e todas as notas importadas vinculadas a ela — não sobra nada órfão. */
+export async function deleteEmpresa(fd: FormData) {
+  const id = String(fd.get("id") || "");
+  if (!id) return;
+  const { member } = await getContext();
+  if (!canDo(member, "analise", "delete")) return;
+  const supabase = await createClient();
+  await supabase.from("nfe_notes").delete().eq("empresa_id", id);
+  await supabase.from("nfe_empresas").delete().eq("id", id);
+  revalidatePath("/analise");
+}
+
+/** Mesma exclusão, mas usada a partir da página de detalhe — depois de apagar não há mais o que mostrar ali. */
+export async function deleteEmpresaAndRedirect(fd: FormData) {
+  await deleteEmpresa(fd);
+  redirect("/analise?tab=empresas");
+}
+
+/**
+ * Apaga todas as notas de um fornecedor (compra) ou cliente (venda) — é assim
+ * que "excluir" um fornecedor/cliente funciona, já que eles não têm linha
+ * própria, são só um agregado das notas. Quando empresaId vem vazio (lista
+ * global, sem recorte por empresa), apaga em todas as empresas do escritório.
+ */
+export async function deleteParty(fd: FormData) {
+  const tipo = String(fd.get("tipo") || "");
+  const doc = String(fd.get("doc") || "");
+  const empresaId = String(fd.get("empresaId") || "");
+  if (tipo !== "compra" && tipo !== "venda") return;
+  const { member } = await getContext();
+  if (!canDo(member, "analise", "delete")) return;
+  const supabase = await createClient();
+
+  let query = supabase.from("nfe_notes").delete().eq("tipo", tipo);
+  if (tipo === "compra") {
+    query = query.eq("emit_documento", doc);
+  } else {
+    query = doc === CONSUMIDOR_FINAL_DOC ? query.is("dest_documento", null) : query.eq("dest_documento", doc);
+  }
+  if (empresaId) query = query.eq("empresa_id", empresaId);
+
+  await query;
+  revalidatePath("/analise");
 }

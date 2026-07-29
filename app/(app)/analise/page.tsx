@@ -18,6 +18,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
   const { member } = await getContext();
   if (!canViewTab(member, "analise")) redirect("/dashboard");
   const canImport = canDo(member, "analise", "create");
+  const canDelete = canDo(member, "analise", "delete");
   const sp = await searchParams;
   const tab =
     sp.tab === "importar" ? "importar" :
@@ -81,7 +82,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>
             Cadastre cada empresa cujas notas você vai importar — clique numa empresa para ver seus fornecedores e clientes.
           </div>
-          <EmpresasPanel canCreate={canImport} empresas={empresas} />
+          <EmpresasPanel canCreate={canImport} canDelete={canDelete} empresas={empresas} />
         </section>
       ) : tab === "importar" ? (
         <section>
@@ -97,7 +98,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>
             Emitentes das notas de compra importadas (todas as empresas), ordenados por valor total comprado.
           </div>
-          <PartiesTable rows={fornecedores} emptyLabel="Nenhuma nota de compra importada ainda — use a aba “Importar XML”." />
+          <PartiesTable rows={fornecedores} tipo="compra" canDelete={canDelete} emptyLabel="Nenhuma nota de compra importada ainda — use a aba “Importar XML”." />
         </section>
       ) : (
         <section>
@@ -105,7 +106,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>
             Destinatários das notas de venda importadas (todas as empresas), ordenados por valor total vendido.
           </div>
-          <PartiesTable rows={clientes} emptyLabel="Nenhuma nota de venda importada ainda — use a aba “Importar XML”." />
+          <PartiesTable rows={clientes} tipo="venda" canDelete={canDelete} emptyLabel="Nenhuma nota de venda importada ainda — use a aba “Importar XML”." />
         </section>
       )}
     </div>

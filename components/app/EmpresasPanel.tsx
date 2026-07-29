@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ACCENT } from "@/lib/design";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
-import { addEmpresa, type EmpresaState } from "@/app/(app)/analise/actions";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
+import { addEmpresa, deleteEmpresa, type EmpresaState } from "@/app/(app)/analise/actions";
 
 export type EmpresaRow = { id: string; nome: string; cnpj: string | null; notas: number };
 
@@ -16,12 +16,14 @@ const th: React.CSSProperties = {
   fontSize: 10.5, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em",
 };
 const GRID = "2fr 200px 150px 24px";
+const GRID_DEL = `${GRID} 34px`;
 
-export function EmpresasPanel({ canCreate, empresas }: { canCreate: boolean; empresas: EmpresaRow[] }) {
+export function EmpresasPanel({ canCreate, canDelete, empresas }: { canCreate: boolean; canDelete: boolean; empresas: EmpresaRow[] }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<EmpresaState, FormData>(addEmpresa, {});
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
+  const grid = canDelete ? GRID_DEL : GRID;
 
   useEffect(() => {
     if (wasPending.current && !pending && !state.error) {
@@ -60,15 +62,15 @@ export function EmpresasPanel({ canCreate, empresas }: { canCreate: boolean; emp
       ) : null}
 
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, whiteSpace: "nowrap", ...th }}>
-          <div>Empresa</div><div>CNPJ</div><div>Notas importadas</div><div />
+        <div style={{ display: "grid", gridTemplateColumns: grid, gap: 10, whiteSpace: "nowrap", ...th }}>
+          <div>Empresa</div><div>CNPJ</div><div>Notas importadas</div><div />{canDelete ? <div /> : null}
         </div>
         {empresas.map((e) => (
-          <Link
+          <div
             key={e.id}
-            href={`/analise/empresas/${e.id}`}
+            onClick={() => router.push(`/analise/empresas/${e.id}`)}
             className="hv-row"
-            style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed", color: "inherit" }}
+            style={{ display: "grid", gridTemplateColumns: grid, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed", cursor: "pointer" }}
           >
             <div style={{ fontSize: 12.5, fontWeight: 600 }}>{e.nome}</div>
             <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600 }}>{e.cnpj ? formatCnpjCpf(e.cnpj) : "—"}</div>
@@ -76,7 +78,22 @@ export function EmpresasPanel({ canCreate, empresas }: { canCreate: boolean; emp
             <div style={{ color: "#c2c3c9", textAlign: "right" }}>
               <svg width="14" height="14" viewBox="0 0 15 15"><path d="M5.5 3l5 4.5-5 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
-          </Link>
+            {canDelete ? (
+              <div onClick={(ev) => ev.stopPropagation()}>
+                <ConfirmForm
+                  action={deleteEmpresa}
+                  message={`Excluir a empresa "${e.nome}"? Isso apaga as ${e.notas} nota(s) importada(s) dela. Não pode ser desfeito.`}
+                >
+                  <input type="hidden" name="id" value={e.id} />
+                  <button type="submit" title="Excluir empresa" className="hv-danger" style={{ color: "#c2c3c9", cursor: "pointer", padding: 4, background: "none", border: "none" }}>
+                    <svg width="14" height="14" viewBox="0 0 15 15">
+                      <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </ConfirmForm>
+              </div>
+            ) : null}
+          </div>
         ))}
         {empresas.length === 0 ? (
           <div style={{ padding: 18, fontSize: 12.5, color: "#a0a3ad", fontStyle: "italic" }}>Nenhuma empresa cadastrada ainda — use o formulário acima.</div>

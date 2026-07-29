@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
-import { canViewTab } from "@/lib/permissions";
+import { canDo, canViewTab } from "@/lib/permissions";
 import { ACCENT } from "@/lib/design";
 import { PartiesTable } from "@/components/app/PartiesTable";
 import { EmpresaExportButton } from "@/components/app/EmpresaExportButton";
+import { ConfirmForm } from "@/components/app/ConfirmForm";
+import { deleteEmpresaAndRedirect } from "@/app/(app)/analise/actions";
 import { aggregateParties, CONSUMIDOR_FINAL_DOC, type PartyAgg } from "@/lib/nfe/aggregate";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
 
@@ -26,6 +28,7 @@ export default async function EmpresaDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const { member } = await getContext();
   if (!canViewTab(member, "analise")) redirect("/dashboard");
+  const canDelete = canDo(member, "analise", "delete");
   const supabase = await createClient();
 
   const { data: empresa } = await supabase.from("nfe_empresas").select("id,nome,cnpj").eq("id", id).maybeSingle();
@@ -78,6 +81,27 @@ export default async function EmpresaDetailPage({ params }: { params: Promise<{ 
           totalCompras={totalCompras}
           totalVendas={totalVendas}
         />
+        {canDelete ? (
+          <ConfirmForm
+            action={deleteEmpresaAndRedirect}
+            message={`Excluir a empresa "${empresa.nome}"? Isso apaga todas as ${compras.length + vendas.length} notas importadas dela. Não pode ser desfeito.`}
+          >
+            <input type="hidden" name="id" value={empresa.id} />
+            <button
+              type="submit"
+              className="hv-danger"
+              style={{
+                display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600, color: "#b3402e",
+                background: "#fff", border: "1.5px solid #f0c8bf", borderRadius: 8, padding: "7px 12px", cursor: "pointer",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 15 15">
+                <path d="M2 3.5h11M6 3.5V2h3v1.5M3.5 3.5l.7 9.5h6.6l.7-9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Excluir empresa
+            </button>
+          </ConfirmForm>
+        ) : null}
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px", display: "flex", flexDirection: "column", gap: 22 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
@@ -90,13 +114,13 @@ export default async function EmpresaDetailPage({ params }: { params: Promise<{ 
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Fornecedores</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Emitentes das notas de compra desta empresa.</div>
-          <PartiesTable rows={fornecedores} emptyLabel="Nenhuma nota de compra importada para esta empresa ainda." />
+          <PartiesTable rows={fornecedores} tipo="compra" empresaId={empresa.id} canDelete={canDelete} emptyLabel="Nenhuma nota de compra importada para esta empresa ainda." />
         </section>
 
         <section>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Clientes</div>
           <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Destinatários das notas de venda desta empresa.</div>
-          <PartiesTable rows={clientes} emptyLabel="Nenhuma nota de venda importada para esta empresa ainda." />
+          <PartiesTable rows={clientes} tipo="venda" empresaId={empresa.id} canDelete={canDelete} emptyLabel="Nenhuma nota de venda importada para esta empresa ainda." />
         </section>
       </div>
     </div>
