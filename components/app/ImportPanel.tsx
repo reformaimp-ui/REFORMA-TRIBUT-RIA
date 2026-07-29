@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ACCENT } from "@/lib/design";
+import { buildBrandedWorkbook, type TableColumn } from "@/lib/xlsxTemplate";
 
 type CsvTemplate = { filename: string; content: string };
 type XlsxTemplate = { filename: string; rows: string[][] };
@@ -137,11 +138,10 @@ export function ImportPanel({
 
   const downloadTemplate = async () => {
     if (format === "xlsx" && "rows" in template) {
-      const XLSX = await import("xlsx");
-      const sheet = XLSX.utils.aoa_to_sheet(template.rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, sheet, "Modelo");
-      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const [header, ...exampleRows] = template.rows;
+      const columns: TableColumn[] = header.map((h, i) => ({ header: h, key: `c${i}`, width: Math.max(14, h.length + 6) }));
+      const rows = exampleRows.map((r) => Object.fromEntries(columns.map((c, i) => [c.key, r[i] ?? ""])));
+      const buf = await buildBrandedWorkbook([{ sheetName: "Modelo", summary: [], columns, rows }]);
       const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

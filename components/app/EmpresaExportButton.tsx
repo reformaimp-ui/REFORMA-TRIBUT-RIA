@@ -4,13 +4,30 @@ import { useState } from "react";
 import { ACCENT } from "@/lib/design";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
 import { CONSUMIDOR_FINAL_DOC, type PartyAgg } from "@/lib/nfe/aggregate";
+import { buildBrandedWorkbook, type BrandedSheetSpec, type TableColumn } from "@/lib/xlsxTemplate";
 
 function docLabel(doc: string): string {
   return doc === CONSUMIDOR_FINAL_DOC ? "—" : formatCnpjCpf(doc);
 }
 
-function partyRows(rows: PartyAgg[]): (string | number)[][] {
-  return rows.map((r) => [r.nome || "—", docLabel(r.doc), r.uf || "—", r.count, r.total, r.temIbsCbs ? "Sim" : "Não"]);
+const PARTY_COLUMNS: TableColumn[] = [
+  { header: "Nome", key: "nome", width: 34 },
+  { header: "CNPJ/CPF", key: "doc", width: 20 },
+  { header: "UF", key: "uf", width: 8, align: "center" },
+  { header: "Notas", key: "notas", width: 9, align: "right" },
+  { header: "Valor total (R$)", key: "valor", width: 16, numFmt: "#,##0.00", align: "right" },
+  { header: "IBS/CBS", key: "ibscbs", width: 10, align: "center" },
+];
+
+function partyRows(rows: PartyAgg[]): Record<string, string | number>[] {
+  return rows.map((r) => ({
+    nome: r.nome || "—",
+    doc: docLabel(r.doc),
+    uf: r.uf || "—",
+    notas: r.count,
+    valor: r.total,
+    ibscbs: r.temIbsCbs ? "Sim" : "Não",
+  }));
 }
 
 /**
@@ -37,28 +54,33 @@ export function EmpresaExportButton({
   const download = async () => {
     setBusy(true);
     try {
-      const XLSX = await import("xlsx");
-      const wb = XLSX.utils.book_new();
+      const cnpjLabel = empresaCnpj ? formatCnpjCpf(empresaCnpj) : "—";
+      const sheets: BrandedSheetSpec[] = [
+        {
+          sheetName: "Fornecedores",
+          summary: [
+            { label: "Empresa", value: empresaNome },
+            { label: "CNPJ", value: cnpjLabel },
+            { label: "Fornecedores", value: fornecedores.length },
+            { label: "Total comprado (R$)", value: totalCompras, numFmt: "#,##0.00" },
+          ],
+          columns: PARTY_COLUMNS,
+          rows: partyRows(fornecedores),
+        },
+        {
+          sheetName: "Clientes",
+          summary: [
+            { label: "Empresa", value: empresaNome },
+            { label: "CNPJ", value: cnpjLabel },
+            { label: "Clientes", value: clientes.length },
+            { label: "Total vendido (R$)", value: totalVendas, numFmt: "#,##0.00" },
+          ],
+          columns: PARTY_COLUMNS,
+          rows: partyRows(clientes),
+        },
+      ];
 
-      const resumo = XLSX.utils.aoa_to_sheet([
-        ["Empresa", empresaNome],
-        ["CNPJ", empresaCnpj ? formatCnpjCpf(empresaCnpj) : "—"],
-        ["Notas importadas", fornecedores.reduce((s, f) => s + f.count, 0) + clientes.reduce((s, c) => s + c.count, 0)],
-        ["Total comprado (R$)", totalCompras],
-        ["Total vendido (R$)", totalVendas],
-        ["Fornecedores", fornecedores.length],
-        ["Clientes", clientes.length],
-      ]);
-      XLSX.utils.book_append_sheet(wb, resumo, "Empresa");
-
-      const header = ["Nome", "CNPJ/CPF", "UF", "Notas", "Valor total (R$)", "IBS/CBS"];
-      const fornSheet = XLSX.utils.aoa_to_sheet([header, ...partyRows(fornecedores)]);
-      XLSX.utils.book_append_sheet(wb, fornSheet, "Fornecedores");
-
-      const cliSheet = XLSX.utils.aoa_to_sheet([header, ...partyRows(clientes)]);
-      XLSX.utils.book_append_sheet(wb, cliSheet, "Clientes");
-
-      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const buf = await buildBrandedWorkbook(sheets);
       const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
