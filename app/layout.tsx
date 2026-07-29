@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const instrument = Instrument_Sans({
@@ -29,7 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${instrument.variable} ${jetbrains.variable} h-full`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
