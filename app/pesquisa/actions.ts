@@ -2,6 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { codeSearchPatterns } from "@/lib/codeSearch";
+import { getSearchClientContext } from "@/lib/searchClient";
+
+async function logSearchEvent(kind: "produto" | "servico" | "lote", term: string | null, resultCount: number) {
+  const { office, client } = await getSearchClientContext();
+  const supabase = await createClient();
+  await supabase.from("search_events").insert({ office_id: office.id, search_client_id: client.id, kind, term, result_count: resultCount });
+}
 
 export type ProdutoResult = {
   ncm: string;
@@ -49,7 +56,9 @@ export async function searchProdutoPublic(term: string): Promise<ProdutoResult[]
     .select("ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs")
     .or(codeSearchPatterns(term, "ncm", "ncm_digits", ["descr"]))
     .limit(25);
-  return enrich(supabase, (data ?? []) as RawRow[]);
+  const results = await enrich(supabase, (data ?? []) as RawRow[]);
+  await logSearchEvent("produto", term, results.length);
+  return results;
 }
 
 export type ServicoResult = {
@@ -108,7 +117,9 @@ export async function searchServicoPublic(term: string): Promise<ServicoResult[]
     .select("item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome")
     .or(codeSearchPatterns(term, "nbs", "nbs_digits", ["item", "nbs_descr"]))
     .limit(25);
-  return enrichServico(supabase, (data ?? []) as RawServicoRow[]);
+  const results = await enrichServico(supabase, (data ?? []) as RawServicoRow[]);
+  await logSearchEvent("servico", term, results.length);
+  return results;
 }
 
 /** Busca em lote: só aceita NCM (sem descrição), match exato por dígitos. */
@@ -128,5 +139,7 @@ export async function searchProdutosByNcmBatch(rawNcms: string[]): Promise<{ ncm
     arr.push(r);
     byDigits.set(key, arr);
   }
-  return rawNcms.map((raw) => ({ ncm: raw, results: byDigits.get(raw.replace(/\D/g, "")) ?? [] }));
+  const out = rawNcms.map((raw) => ({ ncm: raw, results: byDigits.get(raw.replace(/\D/g, "")) ?? [] }));
+  await logSearchEvent("lote", null, out.reduce((sum, r) => sum + r.results.length, 0));
+  return out;
 }

@@ -16,6 +16,7 @@ export type TabKey =
   | "analise"
   | "base-conhecimento"
   | "arquivos"
+  | "relatorios"
   | "configuracoes";
 
 export type ActionTab = "tarefas" | "prazos" | "fluxos" | "clientes" | "ibs" | "analise" | "base-conhecimento" | "arquivos";
@@ -27,7 +28,7 @@ export type Permissions = {
 };
 
 export const TAB_ORDER: TabKey[] = [
-  "dashboard", "tarefas", "prazos", "fluxos", "clientes", "equipe", "ibs", "analise", "base-conhecimento", "arquivos", "configuracoes",
+  "dashboard", "tarefas", "prazos", "fluxos", "clientes", "equipe", "ibs", "analise", "base-conhecimento", "arquivos", "relatorios", "configuracoes",
 ];
 
 export const TAB_LABELS: Record<TabKey, string> = {
@@ -41,6 +42,7 @@ export const TAB_LABELS: Record<TabKey, string> = {
   analise: "Análise",
   "base-conhecimento": "Base de conhecimento",
   arquivos: "Arquivos",
+  relatorios: "Dashboards",
   configuracoes: "Configurações",
 };
 

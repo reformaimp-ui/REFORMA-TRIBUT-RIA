@@ -174,10 +174,17 @@ export function Sidebar({ office, member }: { office: Office; member: Member }) 
   const showAcessosGroup = showEquipe || showAcessoPesquisa;
   const acessosActive = pathname.startsWith("/equipe") || pathname.startsWith("/acessos");
 
+  const showDashboards = member.role === "admin";
+  const dashboardsActive = pathname.startsWith("/relatorios");
+
   const [acessosOpen, setAcessosOpen] = useState(true);
+  const [dashboardsOpen, setDashboardsOpen] = useState(true);
   useEffect(() => {
     if (acessosActive) setAcessosOpen(true);
   }, [acessosActive]);
+  useEffect(() => {
+    if (dashboardsActive) setDashboardsOpen(true);
+  }, [dashboardsActive]);
 
   // Move o pill deslizante até o item ativo a cada navegação.
   useLayoutEffect(() => {
@@ -292,6 +299,51 @@ export function Sidebar({ office, member }: { office: Office; member: Member }) 
                     Acesso de pesquisa
                   </Link>
                 ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        {showDashboards ? (
+          <>
+            <div
+              onClick={() => setDashboardsOpen((o) => !o)}
+              className="hv-nav"
+              style={{ ...itemStyle(false), cursor: "pointer", color: dashboardsActive ? ACCENT : "#4b4e58" }}
+            >
+              <Icon name="dash" />
+              Dashboards
+              <Chevron open={dashboardsOpen} />
+            </div>
+            {dashboardsOpen ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, marginLeft: 12, paddingLeft: 10, borderLeft: "1.5px solid #ececea" }}>
+                <Link
+                  href="/relatorios/exportar"
+                  data-active={pathname.startsWith("/relatorios/exportar") ? "true" : "false"}
+                  className={pathname.startsWith("/relatorios/exportar") ? undefined : "hv-nav"}
+                  style={{ ...itemStyle(pathname.startsWith("/relatorios/exportar")), fontSize: 12 }}
+                >
+                  <Icon name="analise" />
+                  Exportar Relatórios
+                </Link>
+                <Link
+                  href="/relatorios/pesquisa"
+                  data-active={pathname.startsWith("/relatorios/pesquisa") ? "true" : "false"}
+                  className={pathname.startsWith("/relatorios/pesquisa") ? undefined : "hv-nav"}
+                  style={{ ...itemStyle(pathname.startsWith("/relatorios/pesquisa")), fontSize: 12 }}
+                >
+                  <Icon name="key" />
+                  Dados de Pesquisa
+                </Link>
+                <Link
+                  href="/relatorios/auditoria"
+                  data-active={pathname.startsWith("/relatorios/auditoria") ? "true" : "false"}
+                  className={pathname.startsWith("/relatorios/auditoria") ? undefined : "hv-nav"}
+                  style={{ ...itemStyle(pathname.startsWith("/relatorios/auditoria")), fontSize: 12 }}
+                >
+                  <Icon name="kb" />
+                  Auditoria
+                </Link>
               </div>
             ) : null}
           </>

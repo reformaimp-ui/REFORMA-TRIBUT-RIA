@@ -36,9 +36,33 @@ export const getSearchClientContext = cache(async (): Promise<SearchClientContex
   const office = sc.offices as unknown as SearchClientOffice | null;
   if (!office) redirect("/login");
 
+  // Best-effort: marca o acesso para a métrica "último acesso" em Dados de
+  // Pesquisa — não bloqueia nem falha o contexto se a escrita não completar.
+  void supabase.from("search_clients").update({ last_active_at: new Date().toISOString() }).eq("id", sc.id);
+
   return {
     userId: user.id,
     office,
     client: { id: sc.id, name: sc.name, email: sc.email, active: sc.active, ai_enabled: sc.ai_enabled },
   };
 });
+
+/**
+ * Igual a getSearchClientContext(), mas nunca redireciona — retorna null
+ * quando o usuário autenticado não é um cliente de pesquisa. Usado por
+ * askTaxAssistant(), que é chamado tanto pelo portal de pesquisa quanto pela
+ * aba interna "Assistente IA" (equipe), para saber se deve logar o uso em
+ * search_events sem arriscar redirecionar um membro da equipe para /login.
+ */
+export async function getSearchClientIfAny(): Promise<{ id: string; officeId: string } | null> {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
+  if (!user) return null;
+
+  const { data: sc } = await supabase.from("search_clients").select("id,office_id").eq("user_id", user.id).maybeSingle();
+  if (!sc) return null;
+  return { id: sc.id, officeId: sc.office_id };
+}

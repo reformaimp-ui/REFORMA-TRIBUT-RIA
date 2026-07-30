@@ -2,6 +2,21 @@
 
 import { searchProdutoPublic, searchServicoPublic } from "@/app/pesquisa/actions";
 import { searchNcm } from "@/app/(app)/ibs/actions";
+import { getSearchClientIfAny } from "@/lib/searchClient";
+import { createClient } from "@/lib/supabase/server";
+
+// TaxAiChat é compartilhado entre o portal de pesquisa (cliente) e a aba
+// interna "Assistente IA" (equipe, em /ibs). Só conta como métrica de "Dados
+// de Pesquisa" quando quem está conversando é de fato um cliente de pesquisa
+// — uso interno da equipe não entra nessa contagem.
+async function logAiUsage(tokensIn: number, tokensOut: number) {
+  const sc = await getSearchClientIfAny();
+  if (!sc) return;
+  const supabase = await createClient();
+  await supabase
+    .from("search_events")
+    .insert({ office_id: sc.officeId, search_client_id: sc.id, kind: "ia", tokens_in: tokensIn, tokens_out: tokensOut });
+}
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-opus-4-8";
@@ -104,6 +119,8 @@ export async function askTaxAssistant(history: AiChatMessage[]): Promise<{ reply
   if (!history.length) return { reply: "" };
 
   const messages: AnthropicMessage[] = history.map((m) => ({ role: m.role, content: m.text }));
+  let tokensIn = 0;
+  let tokensOut = 0;
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
     let res: Response;
@@ -134,6 +151,8 @@ export async function askTaxAssistant(history: AiChatMessage[]): Promise<{ reply
 
     const data = await res.json();
     const content = (data.content ?? []) as AnthropicContentBlock[];
+    tokensIn += Number(data.usage?.input_tokens ?? 0);
+    tokensOut += Number(data.usage?.output_tokens ?? 0);
 
     if (data.stop_reason === "tool_use") {
       messages.push({ role: "assistant", content });
@@ -149,8 +168,10 @@ export async function askTaxAssistant(history: AiChatMessage[]): Promise<{ reply
     }
 
     const textBlock = content.find((b): b is { type: "text"; text: string } => b.type === "text");
+    await logAiUsage(tokensIn, tokensOut);
     return { reply: textBlock?.text ?? "" };
   }
 
+  await logAiUsage(tokensIn, tokensOut);
   return { reply: "", error: "O assistente não conseguiu concluir a consulta. Tente reformular a pergunta." };
 }
