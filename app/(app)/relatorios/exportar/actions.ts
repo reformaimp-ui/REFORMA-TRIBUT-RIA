@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getContext } from "@/lib/data";
 import { buildBrandedWorkbook, type BrandedSheetSpec, type TableColumn } from "@/lib/xlsxTemplate";
+import { getNcmChainsForCodes, type NcmNode } from "@/app/(app)/ibs/actions";
 
 export type FilterState = {
   cst: string[];
@@ -122,6 +123,9 @@ export async function fetchFilteredData(filters: FilterState) {
 const PRODUTO_COLUMNS: TableColumn[] = [
   { header: "NCM", key: "ncm", width: 12, align: "center" },
   { header: "Descrição", key: "descr", width: 40 },
+  { header: "Capítulo", key: "capitulo", width: 34 },
+  { header: "Posição", key: "posicao", width: 34 },
+  { header: "Subposição", key: "subposicao", width: 34 },
   { header: "CST", key: "cst", width: 10, align: "center" },
   { header: "cClassTrib", key: "cclass", width: 14, align: "center" },
   { header: "Alíq. IBS (%)", key: "aliq_ibs", width: 12, align: "right" },
@@ -129,6 +133,18 @@ const PRODUTO_COLUMNS: TableColumn[] = [
   { header: "Red. IBS (%)", key: "red_ibs", width: 12, align: "right" },
   { header: "Red. CBS (%)", key: "red_cbs", width: 12, align: "right" },
 ];
+
+// Estrutura oficial do NCM: capítulo (2 dígitos) → posição (4) → subposição (6)
+// → item (8, é o próprio NCM). getNcmChainsForCodes só retorna os prefixos que
+// de fato existem em ncm_rows, então localizamos cada nível pelo tamanho do
+// código em vez de assumir uma posição fixa no array.
+function nodeAtLevel(chain: NcmNode[], digitsLen: number): NcmNode | undefined {
+  return chain.find((n) => n.digits.length === digitsLen);
+}
+
+function levelLabel(node: NcmNode | undefined): string {
+  return node ? `${node.code} — ${node.descr}` : "—";
+}
 
 const SERVICO_COLUMNS: TableColumn[] = [
   { header: "NBS", key: "nbs", width: 12, align: "center" },
@@ -143,6 +159,7 @@ export async function buildExportSheets(data: { produtos: any[]; servicos: any[]
   const sheets: BrandedSheetSpec[] = [];
 
   if (data.produtos.length > 0) {
+    const chainsByNcm = await getNcmChainsForCodes(data.produtos.map((p) => p.ncm));
     sheets.push({
       sheetName: "Produtos (NCM)",
       summary: [
@@ -150,16 +167,22 @@ export async function buildExportSheets(data: { produtos: any[]; servicos: any[]
         { label: "Período", value: new Date().toLocaleDateString("pt-BR") },
       ],
       columns: PRODUTO_COLUMNS,
-      rows: data.produtos.map((p) => ({
-        ncm: p.ncm,
-        descr: p.descr || "",
-        cst: p.cst || "",
-        cclass: p.cclass || "",
-        aliq_ibs: p.aliq_ibs || "—",
-        aliq_cbs: p.aliq_cbs || "—",
-        red_ibs: p.red_ibs || "—",
-        red_cbs: p.red_cbs || "—",
-      })),
+      rows: data.produtos.map((p) => {
+        const chain = chainsByNcm[p.ncm] ?? [];
+        return {
+          ncm: p.ncm,
+          descr: p.descr || "",
+          capitulo: levelLabel(nodeAtLevel(chain, 2)),
+          posicao: levelLabel(nodeAtLevel(chain, 4)),
+          subposicao: levelLabel(nodeAtLevel(chain, 6)),
+          cst: p.cst || "",
+          cclass: p.cclass || "",
+          aliq_ibs: p.aliq_ibs || "—",
+          aliq_cbs: p.aliq_cbs || "—",
+          red_ibs: p.red_ibs || "—",
+          red_cbs: p.red_cbs || "—",
+        };
+      }),
     });
   }
 
