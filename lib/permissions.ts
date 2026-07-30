@@ -42,7 +42,7 @@ export const TAB_LABELS: Record<TabKey, string> = {
   analise: "Análise",
   "base-conhecimento": "Base de conhecimento",
   arquivos: "Arquivos",
-  relatorios: "Dashboards",
+  relatorios: "Central Admin",
   configuracoes: "Configurações",
 };
 

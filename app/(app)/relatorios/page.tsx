@@ -11,7 +11,7 @@ export default async function RelatóriosPage() {
   return (
     <div className="stagger" style={{ padding: "20px 22px", height: "100%", overflow: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Dashboards e Relatórios</div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Central Admin</div>
         <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 20 }}>
           Ferramentas de análise e exportação de dados para administradores
         </div>

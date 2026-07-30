@@ -312,7 +312,7 @@ export function Sidebar({ office, member }: { office: Office; member: Member }) 
               style={{ ...itemStyle(false), cursor: "pointer", color: dashboardsActive ? ACCENT : "#4b4e58" }}
             >
               <Icon name="dash" />
-              Dashboards
+              Central Admin
               <Chevron open={dashboardsOpen} />
             </div>
             {dashboardsOpen ? (
