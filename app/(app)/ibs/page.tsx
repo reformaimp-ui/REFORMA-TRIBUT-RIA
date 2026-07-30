@@ -60,11 +60,11 @@ export default async function IbsPage({ searchParams }: { searchParams: Promise<
   if (tab === "servicos") {
     let query = supabase
       .from("servico_rows")
-      .select("id,item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome", { count: "exact" })
+      .select("id,item_code,item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome", { count: "exact" })
       .order("position")
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (q) {
-      query = query.or(codeSearchPatterns(q, "nbs", "nbs_digits", ["item", "nbs_descr", "indop", "cclass"]));
+      query = query.or(codeSearchPatterns(q, "nbs", "nbs_digits", ["item_code", "item", "nbs_descr", "indop", "cclass"]));
     }
     const { data, count } = await query;
     serv = (data ?? []) as ServicoRow[];

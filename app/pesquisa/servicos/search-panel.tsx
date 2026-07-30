@@ -59,7 +59,7 @@ export function ServicoSearchPanel() {
                 style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}
               >
                 <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 700 }}>{r.nbs}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 2 }}>{r.item}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 2 }}>{r.item_code ? `${r.item_code} — ` : ""}{r.item}</div>
                 <div style={{ fontSize: 12, color: "#8a8d98", marginTop: 2 }}>{r.nbs_descr}</div>
               </div>
             ))
@@ -90,7 +90,7 @@ function ResultCard({ result }: { result: ServicoResult }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 16, padding: 26 }}>
       <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 13, color: "#8a8d98", fontWeight: 700 }}>{result.nbs}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2, textWrap: "pretty" }}>{result.item}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2, textWrap: "pretty" }}>{result.item_code ? `${result.item_code} — ` : ""}{result.item}</div>
       <div style={{ fontSize: 13.5, color: "#6b6e78", marginTop: 4, textWrap: "pretty" }}>{result.nbs_descr}</div>
 
       <div style={{ marginTop: 18, padding: "16px 20px", borderRadius: 12, background: isento ? "#e8f5f0" : "#f7f8ff", border: `1.5px solid ${isento ? "#c9ebdf" : "#d9deff"}` }}>

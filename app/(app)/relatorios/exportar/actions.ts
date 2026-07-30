@@ -108,7 +108,7 @@ export async function fetchFilteredData(filters: FilterState) {
   if (filters.types.includes("servicos")) {
     let query = supabase
       .from("servico_rows")
-      .select("id,nbs,nbs_descr,item,indop,local_ibs,cclass,cclass_nome")
+      .select("id,nbs,nbs_descr,item_code,item,indop,local_ibs,cclass,cclass_nome")
       .eq("office_id", office.id);
 
     if (filters.cclass.length > 0) query = query.in("cclass", filters.cclass);
@@ -147,8 +147,9 @@ function levelLabel(node: NcmNode | undefined): string {
 }
 
 const SERVICO_COLUMNS: TableColumn[] = [
+  { header: "Item", key: "item_code", width: 10, align: "center" },
+  { header: "Descrição Item", key: "item", width: 34 },
   { header: "NBS", key: "nbs", width: 12, align: "center" },
-  { header: "Item", key: "item", width: 16, align: "center" },
   { header: "Descrição", key: "nbs_descr", width: 40 },
   { header: "INDOP", key: "indop", width: 12, align: "center" },
   { header: "Local IBS", key: "local_ibs", width: 14, align: "center" },
@@ -195,8 +196,9 @@ export async function buildExportSheets(data: { produtos: any[]; servicos: any[]
       ],
       columns: SERVICO_COLUMNS,
       rows: data.servicos.map((s) => ({
-        nbs: s.nbs,
+        item_code: s.item_code || "",
         item: s.item || "",
+        nbs: s.nbs,
         nbs_descr: s.nbs_descr || "",
         indop: s.indop || "—",
         local_ibs: s.local_ibs || "—",

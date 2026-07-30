@@ -45,9 +45,10 @@ const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
   servico: {
     filename: "modelo-servicos.xlsx",
     rows: [
-      ["Descrição Item", "NBS", "Descrição NBS", "INDOP", "Local incidência IBS", "cClassTrib", "Nome cClassTrib"],
-      ["Análise e Desenvolvimento de Sistemas", "1.1502.10.00", "Serviços de projeto e desenvolvimento de aplicativos e programas não personalizados", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
-      ["Análise e Desenvolvimento de Sistemas", "1.1502.40.00", "Serviços de projeto e desenvolvimento de estruturas e conteúdo de bancos de dados", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
+      ["Item", "Descrição Item", "NBS", "Descrição NBS", "INDOP", "Local incidência IBS", "cClassTrib", "Nome cClassTrib"],
+      ["01.01", "Análise e Desenvolvimento de Sistemas", "1.1502.10.00", "Serviços de projeto e desenvolvimento de aplicativos e programas não personalizados", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
+      ["", "", "1.1502.40.00", "Serviços de projeto e desenvolvimento de estruturas e conteúdo de bancos de dados", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
+      ["01.02", "Programação", "1.1501.10.00", "Serviços de análise de sistemas", "100301", "Domicílio principal do adquirente", "000001", "Situações tributadas integralmente pelo IBS e CBS"],
     ],
   },
   vinculo: {
@@ -84,6 +85,28 @@ const TEMPLATES: Record<string, { filename: string; rows: string[][] }> = {
   },
 };
 
+/**
+ * Na lista de serviços da LC 116 o mesmo item (ex.: "01.01 — Análise e
+ * Desenvolvimento de Sistemas") cobre vários NBS, e na planilha ele costuma vir
+ * preenchido só na primeira linha (célula mesclada). Repete o último item/descrição
+ * não vazio nas linhas seguintes para que cada NBS fique gravado com o seu item.
+ */
+function fillDownItem(cells: string[][]): string[][] {
+  let code = "";
+  let descr = "";
+  return cells.map((c) => {
+    const row = [...c];
+    const rowCode = String(row[0] ?? "").trim();
+    const rowDescr = String(row[1] ?? "").trim();
+    // Um código novo abre um item novo — a descrição dele não herda a do anterior.
+    if (rowCode) { code = rowCode; descr = rowDescr; }
+    else if (rowDescr) descr = rowDescr;
+    row[0] = code;
+    row[1] = descr;
+    return row;
+  });
+}
+
 function Batch({
   type, placeholder, desc, cstSet, cclassSet,
 }: {
@@ -93,7 +116,8 @@ function Batch({
   // códigos cadastrados — caso contrário não bloqueia a primeira carga) e sinaliza
   // chaves duplicadas dentro do próprio arquivo (mantém a 1ª ocorrência, rejeita as
   // demais) em vez de deixá-las se sobrescrever silenciosamente no upsert.
-  const validate = (cells: string[][]): Validation => {
+  const validate = (rawCells: string[][]): Validation => {
+    const cells = type === "servico" ? fillDownItem(rawCells) : rawCells;
     const valid: string[][] = [];
     const rejected: Rejected[] = [];
     const seen = new Set<string>();
@@ -110,8 +134,8 @@ function Batch({
         seen.add(key);
       } else if (type === "servico") {
         // Chave real: NBS + cClassTrib — um NBS pode ter várias tributações.
-        const nbs = String(c[1] ?? "").trim();
-        const scclass = String(c[5] ?? "").trim();
+        const nbs = String(c[2] ?? "").trim();
+        const scclass = String(c[6] ?? "").trim();
         const key = `${nbs}|${scclass}`;
         if (seen.has(key)) { rejected.push({ row: c, reason: `NBS ${nbs} com a mesma tributação (cClassTrib ${scclass}) duplicado no arquivo` }); continue; }
         if (cclassSet.size && scclass && !cclassSet.has(scclass)) { rejected.push({ row: c, reason: `cClassTrib ${scclass} inexistente` }); continue; }
@@ -241,7 +265,10 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
           <form action={sAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".06em" }}>Cadastro individual</div>
-            <div><div style={LBL}>Descrição item</div><input className="fc" name="item" placeholder="Ex.: Análise e Desenvolvimento de Sistemas" autoFocus style={INP} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12 }}>
+              <div><div style={LBL}>Item</div><input className="fc" name="item_code" placeholder="Ex.: 01.01" autoFocus style={MONO} /></div>
+              <div><div style={LBL}>Descrição item</div><input className="fc" name="item" placeholder="Ex.: Análise e Desenvolvimento de Sistemas" style={INP} /></div>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div><div style={LBL}>NBS</div><input className="fc" name="nbs" placeholder="Ex.: 1.1502.10.00" style={MONO} /></div>
               <div><div style={LBL}>INDOP</div><input className="fc" name="indop" placeholder="Ex.: 100301" style={MONO} /></div>
@@ -264,8 +291,8 @@ export function IbsForm({ initial, cstRows, cclassRows }: { initial: string; cst
           </form>
           <Batch
             type="servico"
-            placeholder={"Análise e Desenvolvimento de Sistemas\t1.1502.10.00\tServiços de projeto e desenvolvimento de aplicativos\t100301\tDomicílio principal do adquirente\t000001\tSituações tributadas integralmente pelo IBS e CBS"}
-            desc={<span>Uma linha por serviço — colunas <b>Descrição Item, NBS, Descrição NBS, INDOP, Local incidência IBS, cClassTrib, Nome cClassTrib</b> — ou importe um .xlsx.</span>}
+            placeholder={"01.01\tAnálise e Desenvolvimento de Sistemas\t1.1502.10.00\tServiços de projeto e desenvolvimento de aplicativos\t100301\tDomicílio principal do adquirente\t000001\tSituações tributadas integralmente pelo IBS e CBS"}
+            desc={<span>Uma linha por serviço — colunas <b>Item, Descrição Item, NBS, Descrição NBS, INDOP, Local incidência IBS, cClassTrib, Nome cClassTrib</b> — ou importe um .xlsx. Item e Descrição Item podem ficar em branco nas linhas seguintes do mesmo item: repetimos o último preenchido.</span>}
             cstSet={cstSet}
             cclassSet={cclassSet}
           />

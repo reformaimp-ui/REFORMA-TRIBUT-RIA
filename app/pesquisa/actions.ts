@@ -62,6 +62,7 @@ export async function searchProdutoPublic(term: string): Promise<ProdutoResult[]
 }
 
 export type ServicoResult = {
+  item_code: string;
   item: string;
   nbs: string;
   nbs_descr: string;
@@ -76,7 +77,7 @@ export type ServicoResult = {
 };
 
 type RawServicoRow = {
-  item: string; nbs: string; nbs_digits?: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string;
+  item_code: string; item: string; nbs: string; nbs_digits?: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string;
 };
 
 // CST e % de redução do serviço vêm do produto cadastrado com o mesmo
@@ -100,7 +101,7 @@ async function enrichServico(
   return rows.map((r) => {
     const ref = byCclass[r.cclass];
     return {
-      item: r.item, nbs: r.nbs, nbs_descr: r.nbs_descr, indop: r.indop, local_ibs: r.local_ibs,
+      item_code: r.item_code, item: r.item, nbs: r.nbs, nbs_descr: r.nbs_descr, indop: r.indop, local_ibs: r.local_ibs,
       cclass: r.cclass, cclass_nome: r.cclass_nome,
       cst: ref?.cst || "", cstDescr: ref?.cst ? cstMap[ref.cst] || "" : "",
       red_ibs: ref?.red_ibs || "", red_cbs: ref?.red_cbs || "",
@@ -114,8 +115,8 @@ export async function searchServicoPublic(term: string): Promise<ServicoResult[]
   const supabase = await createClient();
   const { data } = await supabase
     .from("servico_rows")
-    .select("item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome")
-    .or(codeSearchPatterns(term, "nbs", "nbs_digits", ["item", "nbs_descr"]))
+    .select("item_code,item,nbs,nbs_descr,indop,local_ibs,cclass,cclass_nome")
+    .or(codeSearchPatterns(term, "nbs", "nbs_digits", ["item_code", "item", "nbs_descr"]))
     .limit(25);
   const results = await enrichServico(supabase, (data ?? []) as RawServicoRow[]);
   await logSearchEvent("servico", term, results.length);

@@ -11,8 +11,13 @@ export type ChunkResult = { inserted: number; error?: string };
 export type Rejected = { row: string[]; reason: string };
 export type Validation = { valid: string[][]; rejected: Rejected[] };
 
-const HEADER_WORDS = /^(nome|cst|cclasstrib|ncm|nbs|indop|c[oó]digo|code|descri[cç][aã]o(\s*(item|ncm|nbs))?)$/i;
+const HEADER_WORDS = /^(nome|cst|cclasstrib|ncm|nbs|indop|item(\s*lc\s*116)?|c[oó]digo|code|descri[cç][aã]o(\s*(item|ncm|nbs))?)$/i;
 const CHUNK_SIZE = 500;
+
+// Uma linha só é descartada se estiver inteiramente vazia ou se for o cabeçalho —
+// a 1ª célula pode vir em branco de propósito (célula mesclada no Excel, como o
+// "Item" da lista de serviços que se repete por vários NBS).
+const keepRow = (c: string[]) => c.some((v) => v) && !HEADER_WORDS.test(c[0] ?? "");
 
 /**
  * Painel de importação em lote: dropzone estilizada, botão de template,
@@ -67,7 +72,7 @@ export function ImportPanel({
       .map((l) => l.trim())
       .filter(Boolean)
       .map((l) => l.split(",").map((c) => c.trim()))
-      .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
+      .filter(keepRow);
 
   const tabRows = (t: string) =>
     t
@@ -75,7 +80,7 @@ export function ImportPanel({
       .map((l) => l.replace(/\r$/, ""))
       .filter((l) => l.trim())
       .map((l) => l.split("\t").map((c) => c.trim()))
-      .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
+      .filter(keepRow);
 
   const n = format === "xlsx" ? rows.length : csvRows(text).length;
 
@@ -124,7 +129,7 @@ export function ImportPanel({
         const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false });
         const parsed = aoa
           .map((r) => (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim()))
-          .filter((c) => c[0] && !HEADER_WORDS.test(c[0]));
+          .filter(keepRow);
         setRows(parsed);
         setText(parsed.map((c) => c.join("\t")).join("\n"));
       };

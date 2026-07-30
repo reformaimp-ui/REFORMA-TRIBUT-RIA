@@ -16,11 +16,11 @@ const th: React.CSSProperties = {
 };
 
 export type ServicoRow = {
-  id: string; item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string;
+  id: string; item_code: string; item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string;
 };
-type ServicoDraft = { item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string };
+type ServicoDraft = { item_code: string; item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string };
 
-const GRID = "1fr 90px 1.4fr 70px 1fr 80px 1.2fr 70px 70px 70px";
+const GRID = "60px 1fr 90px 1.4fr 70px 1fr 80px 1.2fr 70px 70px 70px";
 const GRID_DEL = `${GRID} 34px`;
 
 export function ServicoTable({
@@ -36,14 +36,14 @@ export function ServicoTable({
 
   const { setDirty } = useIbsEditGuard();
   const [editId, setEditId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<ServicoDraft>({ item: "", nbs: "", nbs_descr: "", indop: "", local_ibs: "", cclass: "", cclass_nome: "" });
+  const [draft, setDraft] = useState<ServicoDraft>({ item_code: "", item: "", nbs: "", nbs_descr: "", indop: "", local_ibs: "", cclass: "", cclass_nome: "" });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
   function startEdit(r: ServicoRow) {
     if (editId) return;
     setEditId(r.id);
-    setDraft({ item: r.item, nbs: r.nbs, nbs_descr: r.nbs_descr, indop: r.indop, local_ibs: r.local_ibs, cclass: r.cclass, cclass_nome: r.cclass_nome });
+    setDraft({ item_code: r.item_code, item: r.item, nbs: r.nbs, nbs_descr: r.nbs_descr, indop: r.indop, local_ibs: r.local_ibs, cclass: r.cclass, cclass_nome: r.cclass_nome });
     setError("");
     setDirty(true);
   }
@@ -90,11 +90,11 @@ export function ServicoTable({
         <div style={{ fontSize: 11.5, color: "#8a8d98" }}>
           {total.toLocaleString("pt-BR")} serviço(s){q ? ` para “${q}”` : ""}
         </div>
-        <TableSearch value={term} onChange={setTerm} placeholder="Pesquisar NBS, descrição, INDOP ou cClassTrib…" disabled={!!editId} />
+        <TableSearch value={term} onChange={setTerm} placeholder="Pesquisar item, NBS, descrição, INDOP ou cClassTrib…" disabled={!!editId} />
       </div>
       <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, overflow: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: grid, gap: 10, whiteSpace: "nowrap", ...th }}>
-          <div>Descrição item</div><div>NBS</div><div>Descrição NBS</div><div>INDOP</div><div>Local incidência IBS</div><div>cClassTrib</div><div>Nome cClassTrib</div><div>CST</div><div>Red. IBS</div><div>Red. CBS</div>{canDelete ? <div /> : null}
+          <div>Item</div><div>Descrição item</div><div>NBS</div><div>Descrição NBS</div><div>INDOP</div><div>Local incidência IBS</div><div>cClassTrib</div><div>Nome cClassTrib</div><div>CST</div><div>Red. IBS</div><div>Red. CBS</div>{canDelete ? <div /> : null}
         </div>
         {rows.map((r, i) => {
           const ref = cstRedByCclass[r.cclass];
@@ -102,6 +102,7 @@ export function ServicoTable({
             return (
               <div key={`${r.nbs}-${r.cclass}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 18px", borderBottom: "1px solid #f0f0ed", background: "#fffdf5" }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  <EditField label="Item" value={draft.item_code} onChange={(v) => setDraft((d) => ({ ...d, item_code: v }))} width={90} />
                   <EditField label="Descrição item" value={draft.item} onChange={(v) => setDraft((d) => ({ ...d, item: v }))} width={220} />
                   <EditField label="NBS" value={draft.nbs} onChange={(v) => setDraft((d) => ({ ...d, nbs: v }))} width={110} />
                   <EditField label="Descrição NBS" value={draft.nbs_descr} onChange={(v) => setDraft((d) => ({ ...d, nbs_descr: v }))} width={220} />
@@ -122,6 +123,7 @@ export function ServicoTable({
               onDoubleClick={() => { if (canEdit) startEdit(r); }}
               style={{ display: "grid", gridTemplateColumns: grid, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}
             >
+              <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, fontWeight: 600, color: "#4b4e58" }}>{r.item_code}</div>
               <div style={{ fontSize: 12.5, fontWeight: 500 }}>{r.item}</div>
               <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 600 }}>{r.nbs}</div>
               <div style={{ fontSize: 12, color: "#33363f", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nbs_descr}</div>

@@ -157,17 +157,19 @@ export function PreviewPanel({ filters }: { filters: FilterState }) {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e7e7e3" }}>
+                    <th style={{ textAlign: "center", padding: 8, fontWeight: 600, color: "#33363f" }}>Item</th>
+                    <th style={{ textAlign: "left", padding: 8, fontWeight: 600, color: "#33363f" }}>Descrição item</th>
                     <th style={{ textAlign: "left", padding: 8, fontWeight: 600, color: "#33363f" }}>NBS</th>
                     <th style={{ textAlign: "left", padding: 8, fontWeight: 600, color: "#33363f" }}>Descrição</th>
-                    <th style={{ textAlign: "center", padding: 8, fontWeight: 600, color: "#33363f" }}>Item</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.servicos.slice(0, 10).map((s, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #ececea", background: i % 2 === 1 ? "#f7f7f5" : "transparent" }}>
+                      <td style={{ padding: 8, textAlign: "center" }}>{s.item_code || "—"}</td>
+                      <td style={{ padding: 8 }}>{s.item || "—"}</td>
                       <td style={{ padding: 8 }}>{s.nbs}</td>
                       <td style={{ padding: 8 }}>{s.nbs_descr || "—"}</td>
-                      <td style={{ padding: 8, textAlign: "center" }}>{s.item || "—"}</td>
                     </tr>
                   ))}
                 </tbody>

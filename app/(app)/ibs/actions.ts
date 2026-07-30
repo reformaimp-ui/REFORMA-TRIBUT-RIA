@@ -66,7 +66,7 @@ export async function addServico(_p: IbsState, fd: FormData): Promise<IbsState> 
   const supabase = await createClient();
   const { error } = await supabase.from("servico_rows").upsert(
     {
-      office_id: office.id, item: String(fd.get("item") || "").trim(),
+      office_id: office.id, item_code: String(fd.get("item_code") || "").trim(), item: String(fd.get("item") || "").trim(),
       nbs, nbs_digits: onlyDigits(nbs), nbs_descr: String(fd.get("nbs_descr") || "").trim(),
       indop: String(fd.get("indop") || "").trim(), local_ibs: String(fd.get("local_ibs") || "").trim(),
       cclass: String(fd.get("cclass") || "").trim(), cclass_nome: String(fd.get("cclass_nome") || "").trim(),
@@ -147,12 +147,13 @@ export async function importChunk(type: string, cells: string[][], startPos: num
     const rows = dedupeBy(
       cells
         .map((c, i) => {
-          const nbs = String(c[1] ?? "").trim();
+          const nbs = String(c[2] ?? "").trim();
           return {
-            office_id: oid, item: String(c[0] ?? "").trim(), nbs, nbs_digits: onlyDigits(nbs),
-            nbs_descr: String(c[2] ?? "").trim(), indop: String(c[3] ?? "").trim(),
-            local_ibs: String(c[4] ?? "").trim(), cclass: String(c[5] ?? "").trim(),
-            cclass_nome: String(c[6] ?? "").trim(),
+            office_id: oid, item_code: String(c[0] ?? "").trim(), item: String(c[1] ?? "").trim(),
+            nbs, nbs_digits: onlyDigits(nbs),
+            nbs_descr: String(c[3] ?? "").trim(), indop: String(c[4] ?? "").trim(),
+            local_ibs: String(c[5] ?? "").trim(), cclass: String(c[6] ?? "").trim(),
+            cclass_nome: String(c[7] ?? "").trim(),
             position: startPos + i,
           };
         })
@@ -260,7 +261,7 @@ export async function updateProduto(
 
 export async function updateServico(
   id: string,
-  fields: { item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string },
+  fields: { item_code: string; item: string; nbs: string; nbs_descr: string; indop: string; local_ibs: string; cclass: string; cclass_nome: string },
 ): Promise<IbsState> {
   if (!id) return { error: "Linha inválida." };
   const nbs = fields.nbs.trim();
@@ -271,7 +272,8 @@ export async function updateServico(
   const { error } = await supabase
     .from("servico_rows")
     .update({
-      item: fields.item.trim(), nbs, nbs_digits: onlyDigits(nbs), nbs_descr: fields.nbs_descr.trim(),
+      item_code: fields.item_code.trim(), item: fields.item.trim(),
+      nbs, nbs_digits: onlyDigits(nbs), nbs_descr: fields.nbs_descr.trim(),
       indop: fields.indop.trim(), local_ibs: fields.local_ibs.trim(),
       cclass: fields.cclass.trim(), cclass_nome: fields.cclass_nome.trim(),
     })
