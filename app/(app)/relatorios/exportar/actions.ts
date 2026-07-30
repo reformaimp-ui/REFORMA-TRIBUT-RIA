@@ -154,7 +154,28 @@ const SERVICO_COLUMNS: TableColumn[] = [
   { header: "INDOP", key: "indop", width: 12, align: "center" },
   { header: "Local IBS", key: "local_ibs", width: 14, align: "center" },
   { header: "cClassTrib", key: "cclass", width: 14, align: "center" },
+  { header: "Nome cClassTrib", key: "cclass_nome", width: 40 },
+  { header: "CST", key: "cst", width: 10, align: "center" },
+  { header: "Red. IBS (%)", key: "red_ibs", width: 12, align: "right" },
+  { header: "Red. CBS (%)", key: "red_cbs", width: 12, align: "right" },
 ];
+
+/**
+ * CST e % de redução do serviço não são digitados na aba de serviços: seguem o
+ * mesmo cClassTrib cadastrado em Tributação dos produtos. A exportação repete a
+ * derivação usada na tela (ibs/page.tsx) para trazer as mesmas colunas.
+ */
+async function servicoCstRedByCclass(cclassCodes: string[]): Promise<Record<string, { cst: string; red_ibs: string; red_cbs: string }>> {
+  const codes = Array.from(new Set(cclassCodes.filter(Boolean)));
+  if (!codes.length) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.from("produto_rows").select("cclass,cst,red_ibs,red_cbs").in("cclass", codes);
+  const map: Record<string, { cst: string; red_ibs: string; red_cbs: string }> = {};
+  for (const r of (data ?? []) as { cclass: string; cst: string; red_ibs: string; red_cbs: string }[]) {
+    if (!map[r.cclass]) map[r.cclass] = { cst: r.cst, red_ibs: r.red_ibs, red_cbs: r.red_cbs };
+  }
+  return map;
+}
 
 export async function buildExportSheets(data: { produtos: any[]; servicos: any[] }): Promise<BrandedSheetSpec[]> {
   const sheets: BrandedSheetSpec[] = [];
@@ -188,6 +209,7 @@ export async function buildExportSheets(data: { produtos: any[]; servicos: any[]
   }
 
   if (data.servicos.length > 0) {
+    const refByCclass = await servicoCstRedByCclass(data.servicos.map((s) => s.cclass));
     sheets.push({
       sheetName: "Serviços (NBS)",
       summary: [
@@ -195,15 +217,22 @@ export async function buildExportSheets(data: { produtos: any[]; servicos: any[]
         { label: "Período", value: new Date().toLocaleDateString("pt-BR") },
       ],
       columns: SERVICO_COLUMNS,
-      rows: data.servicos.map((s) => ({
-        item_code: s.item_code || "",
-        item: s.item || "",
-        nbs: s.nbs,
-        nbs_descr: s.nbs_descr || "",
-        indop: s.indop || "—",
-        local_ibs: s.local_ibs || "—",
-        cclass: s.cclass || "",
-      })),
+      rows: data.servicos.map((s) => {
+        const ref = refByCclass[s.cclass];
+        return {
+          item_code: s.item_code || "",
+          item: s.item || "",
+          nbs: s.nbs,
+          nbs_descr: s.nbs_descr || "",
+          indop: s.indop || "—",
+          local_ibs: s.local_ibs || "—",
+          cclass: s.cclass || "",
+          cclass_nome: s.cclass_nome || "",
+          cst: ref?.cst || "—",
+          red_ibs: ref?.red_ibs || "—",
+          red_cbs: ref?.red_cbs || "—",
+        };
+      }),
     });
   }
 
