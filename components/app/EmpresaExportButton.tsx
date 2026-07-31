@@ -19,13 +19,20 @@ const PARTY_COLUMNS: TableColumn[] = [
   { header: "IBS/CBS", key: "ibscbs", width: 10, align: "center" },
 ];
 
-const PRODUCT_COLUMNS: TableColumn[] = [
-  { header: "Produto", key: "nome", width: 40 },
-  { header: "CFOP", key: "cfop", width: 10, align: "center" },
-  { header: "Natureza da operação", key: "natOp", width: 24 },
-  { header: "Quantidade", key: "count", width: 12, align: "right" },
-  { header: "Valor total (R$)", key: "valor", width: 16, numFmt: "#,##0.00", align: "right" },
-];
+/** partyHeader muda entre "Fornecedor" (compras) e "Cliente" (vendas). */
+function productColumns(partyHeader: string): TableColumn[] {
+  return [
+    { header: "Produto", key: "nome", width: 40 },
+    { header: "CFOP", key: "cfop", width: 10, align: "center" },
+    { header: partyHeader, key: "partyNome", width: 34 },
+    { header: `CNPJ/CPF do ${partyHeader.toLowerCase()}`, key: "partyDoc", width: 20 },
+    { header: "Chave de acesso", key: "chave", width: 46 },
+    { header: "Notas", key: "notas", width: 9, align: "right" },
+    { header: "Natureza da operação", key: "natOp", width: 24 },
+    { header: "Quantidade", key: "count", width: 12, align: "right" },
+    { header: "Valor total (R$)", key: "valor", width: 16, numFmt: "#,##0.00", align: "right" },
+  ];
+}
 
 function partyRows(rows: PartyAgg[]): Record<string, string | number>[] {
   return rows.map((r) => ({
@@ -42,6 +49,11 @@ function productRows(rows: ProductAgg[]): Record<string, string | number>[] {
   return rows.map((r) => ({
     nome: r.nome || "—",
     cfop: r.cfop || "—",
+    partyNome: r.partyNome || "—",
+    partyDoc: docLabel(r.partyDoc),
+    // Como texto: 44 dígitos viram notação científica se o Excel ler como número.
+    chave: r.chave || "—",
+    notas: r.notas,
     natOp: r.natOp || "—",
     count: r.count,
     valor: r.total,
@@ -111,7 +123,7 @@ export function EmpresaExportButton({
             { label: "Produtos", value: produtosComprados.length },
             { label: "Total comprado (R$)", value: totalProdutosComprados, numFmt: "#,##0.00" },
           ],
-          columns: PRODUCT_COLUMNS,
+          columns: productColumns("Fornecedor"),
           rows: productRows(produtosComprados),
         },
         {
@@ -122,7 +134,7 @@ export function EmpresaExportButton({
             { label: "Produtos", value: produtosVendidos.length },
             { label: "Total vendido (R$)", value: totalProdutosVendidos, numFmt: "#,##0.00" },
           ],
-          columns: PRODUCT_COLUMNS,
+          columns: productColumns("Cliente"),
           rows: productRows(produtosVendidos),
         },
       ];

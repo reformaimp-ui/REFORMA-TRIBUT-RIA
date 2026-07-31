@@ -32,7 +32,10 @@ export async function importNfeChunk(tipo: NfeTipo, empresaId: string, files: Nf
   if (!empresa) return { inserted: 0, rejected: [], error: "Empresa inválida — recarregue a página e tente novamente." };
 
   const rejected: NfeRejected[] = [];
-  const parsedByChave = new Map<string, { row: Record<string, unknown>; itens: ParsedNfeItem[]; natOp: string }>();
+  const parsedByChave = new Map<
+    string,
+    { row: Record<string, unknown>; itens: ParsedNfeItem[]; natOp: string; partyDoc: string | null; partyNome: string | null }
+  >();
 
   for (const f of files) {
     const res = parseNfeXml(f.xml);
@@ -46,9 +49,13 @@ export async function importNfeChunk(tipo: NfeTipo, empresaId: string, files: Nf
       rejected.push({ file: f.name, reason: mismatch });
       continue;
     }
+    // Vínculo do produto com a contraparte da nota: na compra é o emitente
+    // (fornecedor), na venda é o destinatário (cliente).
     parsedByChave.set(d.chave, {
       natOp: d.naturezaOperacao,
       itens: d.itens,
+      partyDoc: tipo === "compra" ? d.emitDocumento : d.destDocumento,
+      partyNome: tipo === "compra" ? d.emitNome : d.destNome,
       row: {
         office_id: office.id,
         empresa_id: empresaId,
@@ -109,6 +116,9 @@ export async function importNfeChunk(tipo: NfeTipo, empresaId: string, files: Nf
         nome: it.nome,
         cfop: it.cfop,
         nat_op: parsed.natOp,
+        chave: n.chave,
+        party_documento: parsed.partyDoc,
+        party_nome: parsed.partyNome,
         valor: it.valor,
       }));
     });

@@ -10,7 +10,7 @@ import { EmpresaDetailTabs } from "@/components/app/EmpresaDetailTabs";
 import { EmpresaExportButton } from "@/components/app/EmpresaExportButton";
 import { ConfirmForm } from "@/components/app/ConfirmForm";
 import { deleteEmpresaAndRedirect } from "@/app/(app)/analise/actions";
-import { aggregateParties, aggregateProducts, CONSUMIDOR_FINAL_DOC, type PartyAgg, type ProductAgg } from "@/lib/nfe/aggregate";
+import { aggregateParties, aggregateProducts, CONSUMIDOR_FINAL_DOC, type PartyAgg, type ProductAgg, type ProductRow } from "@/lib/nfe/aggregate";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
 
 export const dynamic = "force-dynamic";
@@ -77,25 +77,37 @@ export default async function EmpresaDetailPage({
   let produtosVendidos: ProductAgg[] = [];
 
   // Sempre carregar produtos comprados e vendidos (para exportação XLSX)
+  const ITEM_COLS = "tipo,nome,cfop,nat_op,chave,party_documento,party_nome,valor,created_at";
+  const toProductRow = (r: {
+    nome: string; cfop: string | null; nat_op: string | null;
+    chave: string | null; party_documento: string | null; party_nome: string | null; valor: number;
+  }): ProductRow => ({
+    nome: r.nome,
+    cfop: r.cfop ?? "",
+    natOp: r.nat_op ?? "",
+    partyDoc: r.party_documento ?? CONSUMIDOR_FINAL_DOC,
+    partyNome: r.party_nome ?? "Consumidor final",
+    chave: r.chave ?? "",
+    valor: Number(r.valor),
+  });
+
   const { data: comprasItems } = await supabase
     .from("nfe_note_items")
-    .select("tipo,nome,cfop,nat_op,valor,created_at")
+    .select(ITEM_COLS)
     .eq("empresa_id", id)
     .eq("tipo", "compra")
     .order("created_at", { ascending: true })
     .limit(ROW_CAP);
-  const comprasRows = (comprasItems ?? []).map((r) => ({ nome: r.nome, cfop: r.cfop ?? "", natOp: r.nat_op ?? "", valor: Number(r.valor) }));
-  produtosComprados = aggregateProducts(comprasRows);
+  produtosComprados = aggregateProducts((comprasItems ?? []).map(toProductRow));
 
   const { data: vendasItems } = await supabase
     .from("nfe_note_items")
-    .select("tipo,nome,cfop,nat_op,valor,created_at")
+    .select(ITEM_COLS)
     .eq("empresa_id", id)
     .eq("tipo", "venda")
     .order("created_at", { ascending: true })
     .limit(ROW_CAP);
-  const vendasRows = (vendasItems ?? []).map((r) => ({ nome: r.nome, cfop: r.cfop ?? "", natOp: r.nat_op ?? "", valor: Number(r.valor) }));
-  produtosVendidos = aggregateProducts(vendasRows);
+  produtosVendidos = aggregateProducts((vendasItems ?? []).map(toProductRow));
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -165,13 +177,13 @@ export default async function EmpresaDetailPage({
           </section>
         ) : tab === "produtos-comprados" ? (
           <section>
-            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Itens das notas de compra desta empresa, agrupados por produto + CFOP.</div>
-            <ProductsTable rows={produtosComprados} emptyLabel="Nenhum item de compra importado para esta empresa ainda." />
+            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Itens das notas de compra desta empresa, agrupados por produto + CFOP + fornecedor.</div>
+            <ProductsTable rows={produtosComprados} partyLabel="Fornecedor" emptyLabel="Nenhum item de compra importado para esta empresa ainda." />
           </section>
         ) : (
           <section>
-            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Itens das notas de venda desta empresa, agrupados por produto + CFOP.</div>
-            <ProductsTable rows={produtosVendidos} emptyLabel="Nenhum item de venda importado para esta empresa ainda." />
+            <div style={{ fontSize: 11.5, color: "#8a8d98", marginBottom: 10 }}>Itens das notas de venda desta empresa, agrupados por produto + CFOP + cliente.</div>
+            <ProductsTable rows={produtosVendidos} partyLabel="Cliente" emptyLabel="Nenhum item de venda importado para esta empresa ainda." />
           </section>
         )}
       </div>
