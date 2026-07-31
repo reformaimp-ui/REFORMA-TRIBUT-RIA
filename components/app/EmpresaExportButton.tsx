@@ -24,6 +24,7 @@ function productColumns(partyHeader: string): TableColumn[] {
   return [
     { header: "Produto", key: "nome", width: 40 },
     { header: "CFOP", key: "cfop", width: 10, align: "center" },
+    { header: "Descrição do CFOP", key: "cfopDesc", width: 46 },
     { header: partyHeader, key: "partyNome", width: 34 },
     { header: `CNPJ/CPF do ${partyHeader.toLowerCase()}`, key: "partyDoc", width: 20 },
     { header: "Chave de acesso", key: "chave", width: 46 },
@@ -45,10 +46,11 @@ function partyRows(rows: PartyAgg[]): Record<string, string | number>[] {
   }));
 }
 
-function productRows(rows: ProductAgg[]): Record<string, string | number>[] {
+function productRows(rows: ProductAgg[], cfopDescricoes: Record<string, string>): Record<string, string | number>[] {
   return rows.map((r) => ({
     nome: r.nome || "—",
     cfop: r.cfop || "—",
+    cfopDesc: cfopDescricoes[r.cfop] || "—",
     partyNome: r.partyNome || "—",
     partyDoc: docLabel(r.partyDoc),
     // Como texto: 44 dígitos viram notação científica se o Excel ler como número.
@@ -73,6 +75,7 @@ export function EmpresaExportButton({
   totalVendas,
   produtosComprados,
   produtosVendidos,
+  cfopDescricoes,
 }: {
   empresaNome: string;
   empresaCnpj: string | null;
@@ -82,6 +85,7 @@ export function EmpresaExportButton({
   totalVendas: number;
   produtosComprados: ProductAgg[];
   produtosVendidos: ProductAgg[];
+  cfopDescricoes: Record<string, string>;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -124,7 +128,7 @@ export function EmpresaExportButton({
             { label: "Total comprado (R$)", value: totalProdutosComprados, numFmt: "#,##0.00" },
           ],
           columns: productColumns("Fornecedor"),
-          rows: productRows(produtosComprados),
+          rows: productRows(produtosComprados, cfopDescricoes),
         },
         {
           sheetName: "Produtos Vendidos",
@@ -135,7 +139,7 @@ export function EmpresaExportButton({
             { label: "Total vendido (R$)", value: totalProdutosVendidos, numFmt: "#,##0.00" },
           ],
           columns: productColumns("Cliente"),
-          rows: productRows(produtosVendidos),
+          rows: productRows(produtosVendidos, cfopDescricoes),
         },
       ];
 

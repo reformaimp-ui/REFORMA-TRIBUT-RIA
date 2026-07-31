@@ -1,21 +1,38 @@
 import { CONSUMIDOR_FINAL_DOC, type ProductAgg } from "@/lib/nfe/aggregate";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
+import { cfopDescricao } from "@/lib/nfe/cfop";
 
 const th: React.CSSProperties = {
   padding: "10px 18px", background: "#fafaf8", borderBottom: "1px solid #ececea",
   fontSize: 10.5, fontWeight: 700, color: "#6b6e78", textTransform: "uppercase", letterSpacing: ".05em",
 };
 
-const GRID = "1.6fr 80px 1.5fr 250px 1.2fr 70px 130px";
-// A chave de acesso (44 dígitos) empurra a tabela além da largura do painel —
-// o container rola na horizontal em vez de espremer as demais colunas.
-const MIN_WIDTH = 1240;
+const GRID = "1.6fr 1.5fr 1.4fr 240px 1.1fr 70px 130px";
+// A chave de acesso (44 dígitos) e a descrição do CFOP empurram a tabela além
+// da largura do painel — o container rola na horizontal em vez de espremer as
+// demais colunas.
+const MIN_WIDTH = 1420;
 
 const BRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 /** Quebra a chave em blocos de 4 pra ficar legível sem virar uma parede de dígitos. */
 function chaveLabel(chave: string): string {
   return chave.replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+/** Código do CFOP com a descrição oficial embaixo (completa no tooltip). */
+function CfopCell({ cfop }: { cfop: string }) {
+  const desc = cfopDescricao(cfop);
+  return (
+    <div style={{ overflow: "hidden" }}>
+      <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: "#4b4e58", fontWeight: 600 }}>{cfop || "—"}</div>
+      {desc ? (
+        <div style={{ fontSize: 10.5, color: "#8a8d98", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={desc}>
+          {desc}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function ProductsTable({
@@ -39,7 +56,7 @@ export function ProductsTable({
             style={{ display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center", padding: "11px 18px", borderBottom: "1px solid #f0f0ed" }}
           >
             <div style={{ fontSize: 12.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.nome}>{r.nome}</div>
-            <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: "#4b4e58", fontWeight: 600 }}>{r.cfop || "—"}</div>
+            <CfopCell cfop={r.cfop} />
             <div style={{ overflow: "hidden" }}>
               <div style={{ fontSize: 12, color: "#1c1e26", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.partyNome}>
                 {r.partyNome || "—"}

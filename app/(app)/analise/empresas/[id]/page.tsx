@@ -12,6 +12,7 @@ import { ConfirmForm } from "@/components/app/ConfirmForm";
 import { deleteEmpresaAndRedirect } from "@/app/(app)/analise/actions";
 import { aggregateParties, aggregateProducts, CONSUMIDOR_FINAL_DOC, type PartyAgg, type ProductAgg, type ProductRow } from "@/lib/nfe/aggregate";
 import { formatCnpjCpf } from "@/lib/nfe/parseNfe";
+import { cfopSubset } from "@/lib/nfe/cfop";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,7 @@ export default async function EmpresaDetailPage({
           totalVendas={totalVendas}
           produtosComprados={produtosComprados}
           produtosVendidos={produtosVendidos}
+          cfopDescricoes={cfopSubset([...produtosComprados, ...produtosVendidos].map((p) => p.cfop))}
         />
         {canDelete ? (
           <ConfirmForm
