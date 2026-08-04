@@ -77,6 +77,21 @@ export async function fetchAliquotaOptions() {
   };
 }
 
+// O PostgREST corta qualquer select em max_rows=1000 (supabase/config.toml).
+// Sem paginar, "exportar todos os produtos" devolvia só os 1000 primeiros.
+const PAGE = 1000;
+
+async function fetchAllPages<T>(build: () => any): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build().range(from, from + PAGE - 1);
+    if (error) throw new Error(`Falha ao carregar dados da exportação: ${error.message}`);
+    const page = (data ?? []) as T[];
+    all.push(...page);
+    if (page.length < PAGE) return all;
+  }
+}
+
 export async function fetchFilteredData(filters: FilterState) {
   const { office } = await getContext();
   const supabase = await createClient();
@@ -85,16 +100,19 @@ export async function fetchFilteredData(filters: FilterState) {
 
   // Fetch produtos
   if (filters.types.includes("produtos")) {
-    let query = supabase
-      .from("produto_rows")
-      .select("id,ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs")
-      .eq("office_id", office.id);
+    const prodData = await fetchAllPages<any>(() => {
+      let query = supabase
+        .from("produto_rows")
+        .select("id,ncm,descr,cst,cclass,aliq_ibs,aliq_cbs,red_ibs,red_cbs")
+        .eq("office_id", office.id)
+        .order("ncm");
 
-    if (filters.cst.length > 0) query = query.in("cst", filters.cst);
-    if (filters.cclass.length > 0) query = query.in("cclass", filters.cclass);
+      if (filters.cst.length > 0) query = query.in("cst", filters.cst);
+      if (filters.cclass.length > 0) query = query.in("cclass", filters.cclass);
+      return query;
+    });
 
-    const { data: prodData } = await query;
-    result.produtos = (prodData ?? []).filter((p) => {
+    result.produtos = prodData.filter((p) => {
       // Filtrar por alíquotas
       if (filters.aliqIbs.length > 0 && !filters.aliqIbs.includes(p.aliq_ibs || "")) return false;
       if (filters.aliqCbs.length > 0 && !filters.aliqCbs.includes(p.aliq_cbs || "")) return false;
@@ -106,15 +124,16 @@ export async function fetchFilteredData(filters: FilterState) {
 
   // Fetch serviços
   if (filters.types.includes("servicos")) {
-    let query = supabase
-      .from("servico_rows")
-      .select("id,nbs,nbs_descr,item_code,item,indop,local_ibs,cclass,cclass_nome")
-      .eq("office_id", office.id);
+    result.servicos = await fetchAllPages<any>(() => {
+      let query = supabase
+        .from("servico_rows")
+        .select("id,nbs,nbs_descr,item_code,item,indop,local_ibs,cclass,cclass_nome")
+        .eq("office_id", office.id)
+        .order("nbs");
 
-    if (filters.cclass.length > 0) query = query.in("cclass", filters.cclass);
-
-    const { data: servData } = await query;
-    result.servicos = servData ?? [];
+      if (filters.cclass.length > 0) query = query.in("cclass", filters.cclass);
+      return query;
+    });
   }
 
   return result;

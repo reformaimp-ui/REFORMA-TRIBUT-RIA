@@ -334,6 +334,9 @@ function onlyDigits(s: string): string {
 
 export type NcmNode = { code: string; descr: string; digits: string };
 
+/** Prefixos por requisição em getNcmChainsForCodes — abaixo do max_rows=1000. */
+const NCM_PREFIX_CHUNK = 300;
+
 // Estas leituras não chamam getContext() de propósito: getContext() faz 2 queries
 // extras (members + offices) só para descobrir office_id, mas o RLS já filtra por
 // tenant sozinho em qualquer select — cada chamada evitada corta uma volta ao banco.
@@ -389,9 +392,23 @@ export async function getNcmChainsForCodes(rawCodes: string[]): Promise<Record<s
   if (!digitsList.length) return {};
   const prefixSet = new Set<string>();
   for (const d of digitsList) for (let i = 1; i <= d.length; i++) prefixSet.add(d.slice(0, i));
+  const prefixes = Array.from(prefixSet);
   const supabase = await createClient();
-  const { data } = await supabase.from("ncm_rows").select("code,descr,code_digits").in("code_digits", Array.from(prefixSet));
-  const byDigits = new Map((data ?? []).map(toNode).map((n) => [n.digits, n]));
+
+  // Um único .in() com todos os prefixos quebra em exportações grandes: o filtro
+  // vai na URL (estoura o limite de tamanho do gateway) e a resposta é cortada
+  // pelo max_rows=1000 do PostgREST. Em ambos os casos a cadeia voltava vazia e
+  // as colunas Capítulo/Posição/Subposição saíam "—". Fatiamos em lotes menores
+  // que o max_rows e propagamos erro em vez de devolver árvore vazia em silêncio.
+  const rows: { code: string; descr: string; code_digits: string }[] = [];
+  for (let i = 0; i < prefixes.length; i += NCM_PREFIX_CHUNK) {
+    const chunk = prefixes.slice(i, i + NCM_PREFIX_CHUNK);
+    const { data, error } = await supabase.from("ncm_rows").select("code,descr,code_digits").in("code_digits", chunk);
+    if (error) throw new Error(`Falha ao carregar a árvore de NCM: ${error.message}`);
+    rows.push(...(data ?? []));
+  }
+
+  const byDigits = new Map(rows.map(toNode).map((n) => [n.digits, n]));
   const result: Record<string, NcmNode[]> = {};
   for (const rawCode of rawCodes) {
     const d = onlyDigits(rawCode);
