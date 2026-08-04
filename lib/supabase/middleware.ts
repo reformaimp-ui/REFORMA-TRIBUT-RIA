@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/cadastro", "/auth", "/primeiro-acesso", "/esqueci-senha"];
+// "/" é a landing page pública; a própria rota redireciona quem já está logado.
+const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/auth", "/primeiro-acesso", "/esqueci-senha"];
 
 /** Refreshes the Supabase session on every request and guards protected routes. */
 export async function updateSession(request: NextRequest) {
