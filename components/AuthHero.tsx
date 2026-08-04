@@ -1,6 +1,7 @@
 export function AuthHero({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div
+      className="auth-hero"
       style={{
         flex: "1 1 46%",
         maxWidth: 560,
@@ -41,6 +42,7 @@ export function AuthHero({ title, subtitle }: { title: string; subtitle: string 
       </div>
       <div style={{ position: "relative", maxWidth: 400 }}>
         <div
+          className="auth-hero-title"
           style={{
             fontSize: 34,
             fontWeight: 700,
@@ -52,6 +54,7 @@ export function AuthHero({ title, subtitle }: { title: string; subtitle: string 
           {title}
         </div>
         <div
+          className="auth-hero-subtitle"
           style={{
             fontSize: 14.5,
             color: "#b7b9c4",
@@ -63,7 +66,7 @@ export function AuthHero({ title, subtitle }: { title: string; subtitle: string 
           {subtitle}
         </div>
       </div>
-      <div style={{ position: "relative", display: "flex" }}>
+      <div className="auth-hero-stats" style={{ position: "relative", display: "flex" }}>
         <div style={{ paddingRight: 22, borderRight: "1px solid #ffffff22" }}>
           <div style={{ fontSize: 19, fontWeight: 700, fontFamily: "var(--font-jetbrains)" }}>
             2026→33

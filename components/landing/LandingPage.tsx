@@ -242,7 +242,6 @@ export function LandingPage() {
               }}
             >
               <span>› Sem custo para consultar</span>
-              <span>› Fontes oficiais citadas</span>
               <span>› Atualizado conforme a LC 214/2025</span>
             </div>
           </div>
@@ -326,7 +325,13 @@ export function LandingPage() {
                   </div>
                   <div className="lp-mock-row">
                     <span style={{ fontSize: 13, color: "#8A8D98" }}>CST</span>
-                    <span className="lp-mono-value">000 · Tributação integral</span>
+                    <span className="lp-mono-value">200 · Alíquota reduzida</span>
+                  </div>
+                  <div className="lp-mock-row">
+                    <span style={{ fontSize: 13, color: "#8A8D98" }}>Redução</span>
+                    <span className="lp-mono-value" style={{ color: "#0E7A6F" }}>
+                      100%
+                    </span>
                   </div>
                   <div className="lp-mock-row" style={{ background: "#4653D608" }}>
                     <span style={{ fontSize: 13, color: "#8A8D98" }}>
@@ -336,7 +341,7 @@ export function LandingPage() {
                       </span>
                     </span>
                     <span className="lp-mono-value" style={{ fontSize: 14, color: "#4653D6" }}>
-                      0,10%
+                      0,00%
                     </span>
                   </div>
                   <div
@@ -350,7 +355,7 @@ export function LandingPage() {
                       </span>
                     </span>
                     <span className="lp-mono-value" style={{ fontSize: 14, color: "#4653D6" }}>
-                      0,90%
+                      0,00%
                     </span>
                   </div>
                 </div>
@@ -386,121 +391,198 @@ export function LandingPage() {
             padding: "clamp(56px,7vw,104px) clamp(20px,5vw,44px)",
           }}
         >
-          <div data-reveal className="lp-reveal" style={{ maxWidth: 640 }}>
-            <div className="lp-eyebrow">Assistente de IA</div>
-            <h2 className="lp-h2">Pergunte em português. Receba a resposta com a fonte.</h2>
-            <p style={{ fontSize: 16, lineHeight: 1.55, color: "#5B5F6B", margin: "14px 0 0" }}>
-              Nada de tabelas intermináveis: descreva o produto ou faça a pergunta, e o assistente
-              aponta o enquadramento certo — sempre citando a base legal.
-            </p>
-          </div>
-
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(min(320px,100%),1fr))",
-              gap: 20,
-              marginTop: 44,
+              gridTemplateColumns: "repeat(auto-fit,minmax(min(380px,100%),1fr))",
+              gap: "clamp(36px,5vw,64px)",
+              alignItems: "center",
             }}
           >
-            {/* pergunta em linguagem natural */}
-            <div data-reveal className="lp-reveal lp-panel">
-              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
-                <span className="lp-badge" style={{ background: "#4653D6" }}>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#fff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 3 L14.3 9 L21 11 L14.3 13 L12 19 L9.7 13 L3 11 L9.7 9 Z" />
-                  </svg>
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#5B5F6B" }}>
-                  Pergunta ao assistente
-                </span>
-              </div>
-              <div className="lp-quote">
-                &ldquo;Minha empresa revende equipamentos médicos importados. Qual a alíquota de
-                IBS/CBS a partir de 2027?&rdquo;
-              </div>
-              <div
+            {/* coluna de texto */}
+            <div data-reveal className="lp-reveal">
+              <div className="lp-eyebrow">Assistente de IA</div>
+              <h2 className="lp-h2">Pergunte em português. Receba a resposta na hora.</h2>
+              <p
                 style={{
-                  marginTop: 10,
-                  background: "#fff",
-                  border: "1px solid #E7E7E3",
-                  borderRadius: 10,
-                  padding: 14,
+                  fontSize: 16,
+                  lineHeight: 1.55,
+                  color: "#5B5F6B",
+                  margin: "14px 0 0",
+                  maxWidth: 460,
                 }}
               >
-                <div style={{ fontSize: 14, lineHeight: 1.55, color: "#1C1E26" }}>
-                  Equipamentos médicos têm redução de 60% na alíquota de IBS e CBS, conforme regime
-                  específico da LC 214/2025 — reduzindo a carga combinada nesses itens.
-                </div>
-                <div
-                  style={{
-                    marginTop: 10,
-                    fontFamily: "var(--font-jetbrains), monospace",
-                    fontSize: 11,
-                    color: "#4653D6",
-                  }}
-                >
-                  fonte: LC 214/2025, art. 168–169
-                </div>
+                Nada de tabelas intermináveis: descreva o produto ou faça a pergunta, e o assistente
+                aponta o enquadramento certo, em linguagem clara.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 30 }}>
+                {AI_POINTS.map((point) => (
+                  <div key={point.title} style={{ display: "flex", gap: 13, alignItems: "start" }}>
+                    <span
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 9,
+                        background: "#4653D614",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flex: "none",
+                        marginTop: 1,
+                      }}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#4653D6"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        {point.icon}
+                      </svg>
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 600 }}>{point.title}</div>
+                      <div
+                        style={{ fontSize: 13.5, lineHeight: 1.5, color: "#8A8D98", marginTop: 2 }}
+                      >
+                        {point.text}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* classificação automática */}
-            <div data-reveal className="lp-reveal lp-panel">
-              <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
-                <span className="lp-badge" style={{ background: "#0E7A6F" }}>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#fff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="4" y="4" width="16" height="16" rx="3" />
-                    <path d="M8 12 L11 15 L16 9" />
-                  </svg>
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#5B5F6B" }}>
-                  Classificação automática
-                </span>
+            {/* mock de conversa */}
+            <div data-reveal className="lp-reveal">
+              <div className="lp-chat">
+                <div className="lp-chat-head">
+                  <span className="lp-badge" style={{ background: "#4653D6" }}>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 3 L14.3 9 L21 11 L14.3 13 L12 19 L9.7 13 L3 11 L9.7 9 Z" />
+                    </svg>
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>Assistente Imperform</div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11.5,
+                        color: "#8A8D98",
+                        marginTop: 1,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: 99,
+                          background: "#0E7A6F",
+                          display: "block",
+                        }}
+                      />
+                      disponível agora
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lp-chat-body">
+                  <div className="lp-bubble-user">
+                    Minha empresa revende equipamentos médicos importados. Qual a alíquota de IBS/CBS
+                    a partir de 2027?
+                  </div>
+
+                  <div className="lp-bubble-ai">
+                    <div style={{ fontSize: 14, lineHeight: 1.55 }}>
+                      Equipamentos médicos entram no regime de <strong>alíquota reduzida em 60%</strong>.
+                      Na prática, a carga combinada de IBS + CBS cai para menos da metade:
+                    </div>
+
+                    <div className="lp-bars">
+                      <div>
+                        <div className="lp-bar-label">
+                          <span>Alíquota padrão</span>
+                          <span className="lp-mono-value">26,50%</span>
+                        </div>
+                        <div className="lp-bar-track">
+                          <span className="lp-bar-fill" style={{ width: "100%", background: "#C9CEF3" }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="lp-bar-label">
+                          <span style={{ color: "#4653D6", fontWeight: 600 }}>Com redução de 60%</span>
+                          <span className="lp-mono-value" style={{ color: "#4653D6" }}>
+                            10,60%
+                          </span>
+                        </div>
+                        <div className="lp-bar-track">
+                          <span className="lp-bar-fill" style={{ width: "40%", background: "#4653D6" }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lp-bubble-user">
+                    E se eu vender uma barra de cereal com cobertura de chocolate?
+                  </div>
+
+                  <div className="lp-bubble-ai" style={{ padding: "12px 14px" }}>
+                    <div className="lp-typing" aria-label="digitando">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lp-chat-input">
+                  <span style={{ flex: 1, fontSize: 13, color: "#B7B7B1" }}>
+                    Descreva o produto ou faça uma pergunta…
+                  </span>
+                  <span className="lp-send">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="4" y1="12" x2="19" y2="12" />
+                      <polyline points="13,6 19,12 13,18" />
+                    </svg>
+                  </span>
+                </div>
               </div>
-              <div className="lp-quote">
-                &ldquo;Barra de cereal com cobertura de chocolate, 30g, embalagem
-                individual&rdquo;
-              </div>
+
               <div
                 style={{
-                  marginTop: 10,
-                  background: "#fff",
-                  border: "1px solid #E7E7E3",
-                  borderRadius: 10,
-                  overflow: "hidden",
+                  marginTop: 13,
+                  textAlign: "center",
+                  fontFamily: "var(--font-jetbrains), monospace",
+                  fontSize: 11,
+                  color: "#B7B7B1",
                 }}
               >
-                <div className="lp-mock-row">
-                  <span style={{ fontSize: 13, color: "#8A8D98" }}>NCM sugerido</span>
-                  <span className="lp-mono-value" style={{ fontWeight: 600, color: "#0E7A6F" }}>
-                    1904.20.00
-                  </span>
-                </div>
-                <div className="lp-mock-row" style={{ borderBottom: "none" }}>
-                  <span style={{ fontSize: 13, color: "#8A8D98" }}>Confiança</span>
-                  <span className="lp-mono-value" style={{ fontWeight: 600 }}>
-                    92%
-                  </span>
-                </div>
+                conversa ilustrativa
               </div>
             </div>
           </div>
@@ -865,6 +947,41 @@ export function LandingPage() {
   );
 }
 
+const AI_POINTS = [
+  {
+    title: "Entende descrição livre",
+    text: "Escreva como você fala — sem precisar saber o código antes.",
+    icon: (
+      <>
+        <path d="M4 6 L20 6" />
+        <path d="M4 12 L20 12" />
+        <path d="M4 18 L14 18" />
+      </>
+    ),
+  },
+  {
+    title: "Sugere NCM e CST",
+    text: "O enquadramento vem junto da resposta, com o grau de confiança.",
+    icon: (
+      <>
+        <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+        <polyline points="8,12 11,15 16,9" />
+      </>
+    ),
+  },
+  {
+    title: "Explica o porquê",
+    text: "Reduções e regimes específicos aparecem traduzidos, sem juridiquês.",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 11 L12 16.5" />
+        <path d="M12 7.8 L12 8.4" />
+      </>
+    ),
+  },
+];
+
 const TIMELINE = [
   {
     year: "2023",
@@ -924,7 +1041,7 @@ const FEATURES = [
   },
   {
     title: "Assistente de IA",
-    text: "Pergunte em português e receba a resposta com a base legal citada.",
+    text: "Pergunte em português e receba a resposta explicada, sem juridiquês.",
     color: "#8A4FD3",
     icon: <path d="M12 3 L14.3 9 L21 11 L14.3 13 L12 19 L9.7 13 L3 11 L9.7 9 Z" />,
   },

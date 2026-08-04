@@ -24,16 +24,7 @@ export function SignupForm() {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(signup, {});
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 40,
-        overflow: "auto",
-      }}
-    >
+    <div className="auth-panel" style={{ overflow: "auto" }}>
       <form
         action={formAction}
         style={{

@@ -18,9 +18,7 @@ export function LoginForm() {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(login, {});
 
   return (
-    <div
-      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}
-    >
+    <div className="auth-panel">
       <form
         action={formAction}
         style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 26 }}
