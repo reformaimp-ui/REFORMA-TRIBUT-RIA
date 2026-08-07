@@ -628,3 +628,6 @@ html:has(.lp) {
 .md-preview blockquote { margin: 0 0 8px; padding: 6px 12px; border-left: 3px solid #d9deff; background: #f7f8ff; border-radius: 0 8px 8px 0; color: #4b4e58; }
 .md-preview hr { border: none; border-top: 1px solid #e7e7e3; margin: 12px 0; }
 .md-preview a { color: #4653d6; font-weight: 600; }
+
+/* skeleton das listas de resultado (portal de pesquisa) */
+@keyframes skeletonPulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }

@@ -1,103 +1,182 @@
 "use client";
 
-import { useState } from "react";
-import { ACCENT } from "@/lib/design";
+import { useEffect, useState, useTransition } from "react";
 import { friendlyTaxSummary } from "@/lib/taxSummary";
 import { NcmTreeView } from "@/components/app/NcmTreeView";
-import { Spinner } from "@/components/app/Spinner";
+import {
+  SearchField,
+  CodeBadge,
+  StatusPill,
+  ResultsCount,
+  ResultItem,
+  EmptyResults,
+  ResultsSkeleton,
+  BackToResults,
+  TaxHeadline,
+  RateBox,
+  DetailRow,
+  SectionLabel,
+  SaveButton,
+  SavedList,
+} from "@/components/portal/search-ui";
+import { listSavedSearches, saveSearch, unsaveSearch, type SavedSearch } from "./saved-actions";
 import { searchProdutoPublic, type ProdutoResult } from "./actions";
+
+/** Chave estável do resultado — o mesmo NCM pode ter mais de uma linha (CST/cClassTrib). */
+const refOf = (r: ProdutoResult) => `${r.ncm}|${r.cst}|${r.cclass}`;
 
 export function SearchPanel() {
   const [term, setTerm] = useState("");
+  const [searched, setSearched] = useState("");
   const [results, setResults] = useState<ProdutoResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<ProdutoResult | null>(null);
+  const [saved, setSaved] = useState<SavedSearch[]>([]);
+  const [savePending, startSave] = useTransition();
+  const [removing, setRemoving] = useState<string | null>(null);
 
-  const search = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!term.trim()) return;
+  useEffect(() => {
+    void listSavedSearches("produto").then(setSaved);
+  }, []);
+
+  const runSearch = async (query: string) => {
+    if (!query.trim()) return;
     setLoading(true);
     setSelected(null);
-    const r = await searchProdutoPublic(term);
+    setSearched(query);
+    const r = await searchProdutoPublic(query);
     setResults(r);
     setLoading(false);
     if (r.length === 1) setSelected(r[0]);
   };
 
+  const toggleSave = (result: ProdutoResult) => {
+    const ref = refOf(result);
+    const already = saved.find((s) => s.ref === ref);
+    startSave(async () => {
+      if (already) {
+        setSaved((cur) => cur.filter((s) => s.ref !== ref));
+        const res = await unsaveSearch(ref, "produto");
+        if (res.error) setSaved(await listSavedSearches("produto"));
+        return;
+      }
+      const res = await saveSearch({ kind: "produto", ref, code: result.ncm, title: result.descr });
+      if (res.saved) setSaved((cur) => [res.saved!, ...cur.filter((s) => s.ref !== ref)]);
+    });
+  };
+
+  const removeSaved = (id: string) => {
+    const target = saved.find((s) => s.id === id);
+    if (!target) return;
+    setRemoving(id);
+    void unsaveSearch(target.ref, "produto").then(async (res) => {
+      setRemoving(null);
+      if (res.error) return;
+      setSaved((cur) => cur.filter((s) => s.id !== id));
+    });
+  };
+
+  const openSaved = (code: string) => {
+    setTerm(code);
+    void runSearch(code);
+  };
+
+  const isIdle = !loading && !results && !selected;
+
   return (
     <div>
-      <form onSubmit={search} style={{ display: "flex", gap: 10 }}>
-        <input
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder='Ex.: 1006.30.11 ou "arroz beneficiado"'
-          autoFocus
-          style={{ flex: 1, fontSize: 14.5, padding: "13px 16px", borderRadius: 12, border: "1.5px solid #e2e2de", outline: "none", background: "#fff" }}
-        />
-        <button
-          type="submit"
-          disabled={loading || !term.trim()}
-          className="hv-btn"
-          style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "#fff", background: ACCENT, padding: "0 24px", borderRadius: 12, border: "none", cursor: "pointer", opacity: loading || !term.trim() ? 0.6 : 1 }}
-        >
-          {loading ? <Spinner size={13} color="#fff" /> : null}
-          {loading ? "Buscando…" : "Pesquisar"}
-        </button>
-      </form>
+      <SearchField
+        value={term}
+        onChange={setTerm}
+        onSubmit={() => void runSearch(term)}
+        placeholder='Ex.: 1006.30.11 ou "arroz beneficiado"'
+        loading={loading}
+        autoFocus
+      />
 
-      {results && !selected ? (
-        <div className="stagger" style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+      {loading ? (
+        <div className="mt-5">
+          <ResultsSkeleton />
+        </div>
+      ) : null}
+
+      {!loading && results && !selected ? (
+        <div className="stagger mt-5">
           {results.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#a0a3ad", fontStyle: "italic", textAlign: "center", padding: 24 }}>
-              Nenhum produto encontrado para “{term}”.
-            </div>
+            <EmptyResults term={searched} kind="produto" />
           ) : (
-            results.map((r) => (
-              <div
-                key={`${r.ncm}-${r.cst}-${r.cclass}`}
-                onClick={() => setSelected(r)}
-                className="hv-card"
-                style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}
-              >
-                <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 700 }}>{r.ncm}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 2 }}>{r.descr}</div>
+            <>
+              <ResultsCount count={results.length} />
+              <div className="flex flex-col gap-2">
+                {results.map((r) => (
+                  <ResultItem
+                    key={`${r.ncm}-${r.cst}-${r.cclass}`}
+                    code={r.ncm}
+                    title={r.descr}
+                    onClick={() => setSelected(r)}
+                  />
+                ))}
               </div>
-            ))
+            </>
           )}
         </div>
       ) : null}
 
-      {selected ? (
-        <div className="animate-fadeup" style={{ marginTop: 24 }}>
-          {results && results.length > 1 ? (
-            <button
-              onClick={() => setSelected(null)}
-              style={{ fontSize: 12, fontWeight: 600, color: ACCENT, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0 }}
-            >
-              ← Voltar aos resultados
-            </button>
-          ) : null}
-          <ResultCard result={selected} />
+      {!loading && selected ? (
+        <div className="animate-fadeup mt-6">
+          {results && results.length > 1 ? <BackToResults onClick={() => setSelected(null)} /> : null}
+          <ResultCard
+            result={selected}
+            saved={saved.some((s) => s.ref === refOf(selected))}
+            savePending={savePending}
+            onToggleSave={() => toggleSave(selected)}
+          />
         </div>
+      ) : null}
+
+      {isIdle ? (
+        <SavedList
+          items={saved}
+          onOpen={openSaved}
+          onRemove={removeSaved}
+          removing={removing}
+          emptyHint="Nada salvo ainda. Ao abrir um produto, use “Salvar” para deixá-lo à mão aqui."
+        />
       ) : null}
     </div>
   );
 }
 
-function ResultCard({ result }: { result: ProdutoResult }) {
+function ResultCard({
+  result,
+  saved,
+  savePending,
+  onToggleSave,
+}: {
+  result: ProdutoResult;
+  saved: boolean;
+  savePending: boolean;
+  onToggleSave: () => void;
+}) {
   const headline = friendlyTaxSummary(result);
   const isento = headline.startsWith("Isento");
+
   return (
-    <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 16, padding: 26 }}>
-      <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 13, color: "#8a8d98", fontWeight: 700 }}>{result.ncm}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2, textWrap: "pretty" }}>{result.descr}</div>
-
-      <div style={{ marginTop: 18, padding: "16px 20px", borderRadius: 12, background: isento ? "#e8f5f0" : "#f7f8ff", border: `1.5px solid ${isento ? "#c9ebdf" : "#d9deff"}` }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: isento ? "#0e7a6f" : ACCENT, textWrap: "pretty" }}>{headline}</div>
-        {result.cstDescr ? <div style={{ fontSize: 12, color: "#6b6e78", marginTop: 4 }}>CST {result.cst} — {result.cstDescr}</div> : null}
+    <div className="rounded-2xl border border-line bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <CodeBadge code={result.ncm} tone="muted" />
+        <div className="flex items-center gap-2">
+          <StatusPill isento={isento} />
+          <SaveButton saved={saved} pending={savePending} onToggle={onToggleSave} />
+        </div>
       </div>
+      <h2 className="mt-2 text-lg font-bold leading-snug text-ink" style={{ textWrap: "pretty" }}>
+        {result.descr}
+      </h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginTop: 18 }}>
+      <TaxHeadline headline={headline} isento={isento} cst={result.cst} cstDescr={result.cstDescr} />
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
         <RateBox label="Alíquota de referência — IBS" value={result.aliq_ibs} />
         <RateBox label="Alíquota de referência — CBS" value={result.aliq_cbs} />
         <RateBox label="Redução — IBS" value={result.red_ibs} accent />
@@ -105,26 +184,15 @@ function ResultCard({ result }: { result: ProdutoResult }) {
       </div>
 
       {result.cclassDescr ? (
-        <div style={{ marginTop: 16, fontSize: 12.5, color: "#4b4e58", lineHeight: 1.5 }}>
-          <b>Classificação tributária ({result.cclass}):</b> {result.cclassDescr}
+        <div className="mt-5">
+          <DetailRow label={`Classificação tributária (${result.cclass}):`}>{result.cclassDescr}</DetailRow>
         </div>
       ) : null}
 
-      <div style={{ marginTop: 22, paddingTop: 18, borderTop: "1px solid #f0f0ed" }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>
-          Onde esse produto está na tabela de NCM
-        </div>
+      <div className="mt-6 border-t border-[#f0f0ed] pt-5">
+        <SectionLabel>Onde esse produto está na tabela de NCM</SectionLabel>
         <NcmTreeView code={result.ncm} />
       </div>
-    </div>
-  );
-}
-
-function RateBox({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div style={{ padding: "10px 14px", borderRadius: 10, background: "#fafaf8", border: "1px solid #ececea" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: accent ? "#0e7a6f" : "#1c1e26" }}>{value || "—"}</div>
     </div>
   );
 }

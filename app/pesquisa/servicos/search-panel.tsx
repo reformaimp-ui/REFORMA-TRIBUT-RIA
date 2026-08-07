@@ -1,129 +1,197 @@
 "use client";
 
-import { useState } from "react";
-import { ACCENT } from "@/lib/design";
+import { useEffect, useState, useTransition } from "react";
 import { friendlyTaxSummary } from "@/lib/taxSummary";
-import { Spinner } from "@/components/app/Spinner";
+import {
+  SearchField,
+  CodeBadge,
+  StatusPill,
+  ResultsCount,
+  ResultItem,
+  EmptyResults,
+  ResultsSkeleton,
+  BackToResults,
+  TaxHeadline,
+  RateBox,
+  DetailRow,
+  SaveButton,
+  SavedList,
+} from "@/components/portal/search-ui";
+import { listSavedSearches, saveSearch, unsaveSearch, type SavedSearch } from "../saved-actions";
 import { searchServicoPublic, type ServicoResult } from "../actions";
+
+/** Chave estável do resultado — o mesmo NBS pode ter mais de um item. */
+const refOf = (r: ServicoResult) => `${r.nbs}|${r.cclass}|${r.item_code}`;
+const titleOf = (r: ServicoResult) => `${r.item_code ? `${r.item_code} — ` : ""}${r.item}`;
 
 export function ServicoSearchPanel() {
   const [term, setTerm] = useState("");
+  const [searched, setSearched] = useState("");
   const [results, setResults] = useState<ServicoResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<ServicoResult | null>(null);
+  const [saved, setSaved] = useState<SavedSearch[]>([]);
+  const [savePending, startSave] = useTransition();
+  const [removing, setRemoving] = useState<string | null>(null);
 
-  const search = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!term.trim()) return;
+  useEffect(() => {
+    void listSavedSearches("servico").then(setSaved);
+  }, []);
+
+  const runSearch = async (query: string) => {
+    if (!query.trim()) return;
     setLoading(true);
     setSelected(null);
-    const r = await searchServicoPublic(term);
+    setSearched(query);
+    const r = await searchServicoPublic(query);
     setResults(r);
     setLoading(false);
     if (r.length === 1) setSelected(r[0]);
   };
 
+  const toggleSave = (result: ServicoResult) => {
+    const ref = refOf(result);
+    const already = saved.find((s) => s.ref === ref);
+    startSave(async () => {
+      if (already) {
+        setSaved((cur) => cur.filter((s) => s.ref !== ref));
+        const res = await unsaveSearch(ref, "servico");
+        if (res.error) setSaved(await listSavedSearches("servico"));
+        return;
+      }
+      const res = await saveSearch({ kind: "servico", ref, code: result.nbs, title: titleOf(result), subtitle: result.nbs_descr });
+      if (res.saved) setSaved((cur) => [res.saved!, ...cur.filter((s) => s.ref !== ref)]);
+    });
+  };
+
+  const removeSaved = (id: string) => {
+    const target = saved.find((s) => s.id === id);
+    if (!target) return;
+    setRemoving(id);
+    void unsaveSearch(target.ref, "servico").then((res) => {
+      setRemoving(null);
+      if (res.error) return;
+      setSaved((cur) => cur.filter((s) => s.id !== id));
+    });
+  };
+
+  const openSaved = (code: string) => {
+    setTerm(code);
+    void runSearch(code);
+  };
+
+  const isIdle = !loading && !results && !selected;
+
   return (
     <div>
-      <form onSubmit={search} style={{ display: "flex", gap: 10 }}>
-        <input
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder='Ex.: 1.1502.10.00 ou "desenvolvimento de sistemas"'
-          autoFocus
-          style={{ flex: 1, fontSize: 14.5, padding: "13px 16px", borderRadius: 12, border: "1.5px solid #e2e2de", outline: "none", background: "#fff" }}
-        />
-        <button
-          type="submit"
-          disabled={loading || !term.trim()}
-          className="hv-btn"
-          style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "#fff", background: ACCENT, padding: "0 24px", borderRadius: 12, border: "none", cursor: "pointer", opacity: loading || !term.trim() ? 0.6 : 1 }}
-        >
-          {loading ? <Spinner size={13} color="#fff" /> : null}
-          {loading ? "Buscando…" : "Pesquisar"}
-        </button>
-      </form>
+      <SearchField
+        value={term}
+        onChange={setTerm}
+        onSubmit={() => void runSearch(term)}
+        placeholder='Ex.: 1.1502.10.00 ou "desenvolvimento de sistemas"'
+        loading={loading}
+        autoFocus
+      />
 
-      {results && !selected ? (
-        <div className="stagger" style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+      {loading ? (
+        <div className="mt-5">
+          <ResultsSkeleton />
+        </div>
+      ) : null}
+
+      {!loading && results && !selected ? (
+        <div className="stagger mt-5">
           {results.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#a0a3ad", fontStyle: "italic", textAlign: "center", padding: 24 }}>
-              Nenhum serviço encontrado para “{term}”.
-            </div>
+            <EmptyResults term={searched} kind="serviço" />
           ) : (
-            results.map((r, i) => (
-              <div
-                key={`${r.nbs}-${r.cclass}-${i}`}
-                onClick={() => setSelected(r)}
-                className="hv-card"
-                style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}
-              >
-                <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 12, color: ACCENT, fontWeight: 700 }}>{r.nbs}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 2 }}>{r.item_code ? `${r.item_code} — ` : ""}{r.item}</div>
-                <div style={{ fontSize: 12, color: "#8a8d98", marginTop: 2 }}>{r.nbs_descr}</div>
+            <>
+              <ResultsCount count={results.length} />
+              <div className="flex flex-col gap-2">
+                {results.map((r, i) => (
+                  <ResultItem
+                    key={`${r.nbs}-${r.cclass}-${i}`}
+                    code={r.nbs}
+                    title={`${r.item_code ? `${r.item_code} — ` : ""}${r.item}`}
+                    subtitle={r.nbs_descr}
+                    onClick={() => setSelected(r)}
+                  />
+                ))}
               </div>
-            ))
+            </>
           )}
         </div>
       ) : null}
 
-      {selected ? (
-        <div className="animate-fadeup" style={{ marginTop: 24 }}>
-          {results && results.length > 1 ? (
-            <button
-              onClick={() => setSelected(null)}
-              style={{ fontSize: 12, fontWeight: 600, color: ACCENT, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0 }}
-            >
-              ← Voltar aos resultados
-            </button>
-          ) : null}
-          <ResultCard result={selected} />
+      {!loading && selected ? (
+        <div className="animate-fadeup mt-6">
+          {results && results.length > 1 ? <BackToResults onClick={() => setSelected(null)} /> : null}
+          <ResultCard
+            result={selected}
+            saved={saved.some((s) => s.ref === refOf(selected))}
+            savePending={savePending}
+            onToggleSave={() => toggleSave(selected)}
+          />
         </div>
+      ) : null}
+
+      {isIdle ? (
+        <SavedList
+          items={saved}
+          onOpen={openSaved}
+          onRemove={removeSaved}
+          removing={removing}
+          emptyHint="Nada salvo ainda. Ao abrir um serviço, use “Salvar” para deixá-lo à mão aqui."
+        />
       ) : null}
     </div>
   );
 }
 
-function ResultCard({ result }: { result: ServicoResult }) {
+function ResultCard({
+  result,
+  saved,
+  savePending,
+  onToggleSave,
+}: {
+  result: ServicoResult;
+  saved: boolean;
+  savePending: boolean;
+  onToggleSave: () => void;
+}) {
   const headline = friendlyTaxSummary(result);
   const isento = headline.startsWith("Isento");
+
   return (
-    <div style={{ background: "#fff", border: "1px solid #e7e7e3", borderRadius: 16, padding: 26 }}>
-      <div style={{ fontFamily: "var(--font-jetbrains)", fontSize: 13, color: "#8a8d98", fontWeight: 700 }}>{result.nbs}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2, textWrap: "pretty" }}>{result.item_code ? `${result.item_code} — ` : ""}{result.item}</div>
-      <div style={{ fontSize: 13.5, color: "#6b6e78", marginTop: 4, textWrap: "pretty" }}>{result.nbs_descr}</div>
-
-      <div style={{ marginTop: 18, padding: "16px 20px", borderRadius: 12, background: isento ? "#e8f5f0" : "#f7f8ff", border: `1.5px solid ${isento ? "#c9ebdf" : "#d9deff"}` }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: isento ? "#0e7a6f" : ACCENT, textWrap: "pretty" }}>{headline}</div>
-        {result.cstDescr ? <div style={{ fontSize: 12, color: "#6b6e78", marginTop: 4 }}>CST {result.cst} — {result.cstDescr}</div> : null}
+    <div className="rounded-2xl border border-line bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <CodeBadge code={result.nbs} tone="muted" />
+        <div className="flex items-center gap-2">
+          <StatusPill isento={isento} />
+          <SaveButton saved={saved} pending={savePending} onToggle={onToggleSave} />
+        </div>
       </div>
+      <h2 className="mt-2 text-lg font-bold leading-snug text-ink" style={{ textWrap: "pretty" }}>
+        {result.item_code ? `${result.item_code} — ` : ""}
+        {result.item}
+      </h2>
+      <p className="mt-1 text-[13.5px] leading-relaxed text-[#6b6e78]" style={{ textWrap: "pretty" }}>
+        {result.nbs_descr}
+      </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginTop: 18 }}>
+      <TaxHeadline headline={headline} isento={isento} cst={result.cst} cstDescr={result.cstDescr} />
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
         <RateBox label="Redução — IBS" value={result.red_ibs} accent />
         <RateBox label="Redução — CBS" value={result.red_cbs} accent />
       </div>
 
-      <div style={{ marginTop: 16, fontSize: 12.5, color: "#4b4e58", lineHeight: 1.5 }}>
-        <b>INDOP:</b> {result.indop || "—"}
+      <div className="mt-5 flex flex-col gap-1.5">
+        <DetailRow label="INDOP:">{result.indop || "—"}</DetailRow>
+        <DetailRow label="Local de incidência do IBS:">{result.local_ibs || "—"}</DetailRow>
+        {result.cclass_nome ? (
+          <DetailRow label={`Classificação tributária (${result.cclass}):`}>{result.cclass_nome}</DetailRow>
+        ) : null}
       </div>
-      <div style={{ marginTop: 6, fontSize: 12.5, color: "#4b4e58", lineHeight: 1.5 }}>
-        <b>Local de incidência do IBS:</b> {result.local_ibs || "—"}
-      </div>
-
-      {result.cclass_nome ? (
-        <div style={{ marginTop: 16, fontSize: 12.5, color: "#4b4e58", lineHeight: 1.5 }}>
-          <b>Classificação tributária ({result.cclass}):</b> {result.cclass_nome}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function RateBox({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div style={{ padding: "10px 14px", borderRadius: 10, background: "#fafaf8", border: "1px solid #ececea" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#8a8d98", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: accent ? "#0e7a6f" : "#1c1e26" }}>{value || "—"}</div>
     </div>
   );
 }
